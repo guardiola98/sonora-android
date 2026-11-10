@@ -1,0 +1,53 @@
+# Beta 0.1 real-device acceptance checklist
+
+Record device/model, Android version, commit, APK SHA-256, network type and results. Run on at least API 26 and a current API 35/36 phone; include a manufacturer with restrictive battery settings. These are manual acceptance steps, not claims that they have passed.
+
+## Install and UI
+
+- [ ] Install the APK and cold-launch it. No blank screens or crash; Home contains honest empty states.
+- [ ] Visit all three bottom tabs. No unwanted audio starts when opening the app.
+- [ ] Check portrait, landscape, a small phone and tablet; large font size and TalkBack. Buttons remain reachable and labeled.
+- [ ] Open About and follow the source/license link; return to Sonora.
+
+## Search and source errors
+
+- [ ] Search a public song/artist. Confirm real title, uploader, duration and thumbnail.
+- [ ] Quickly submit a second query while the first loads; only the newest results survive.
+- [ ] Submit empty text and a query with no results. No spinner remains stuck.
+- [ ] Tap a Home mood chip; it must run a real search, not show a fabricated playlist.
+- [ ] Enable airplane mode before searching: see a useful error. Reconnect and tap Retry.
+- [ ] Try unavailable/removed, age-gated, geo-restricted and verification-required content when encountered. Show an error without a crash or bypass prompt.
+
+## Playback and queue
+
+- [ ] Play a real public result and **listen to audible audio**. Confirm title/artwork match the audio.
+- [ ] Open full player, pause/resume, seek near the start/middle/end; progress follows playback.
+- [ ] Previous restarts the current track after the default threshold; pressing near the start goes back. Next goes to the following queue item.
+- [ ] Allow a track to finish; next track starts automatically. At the end of the queue, Play restarts the final track.
+- [ ] Add several tracks from search and library. Queue ordering is correct; move up, jump and remove (including the current track) work.
+- [ ] Clear the queue; playback stops and the mini-player disappears. Add another track and resume.
+- [ ] Navigate all screens and rotate while playing. The same service/player continues without restart or duplicated audio.
+- [ ] Pause for a long interval (long enough for the source URL to expire), then resume/seek. The app requests a fresh stream or shows Retry after the bounded recovery attempt.
+- [ ] Disconnect Wi-Fi during audio loading; no infinite retry loop. Reconnect and Retry at the retained position.
+
+## Background, session and lifecycle
+
+- [ ] Press Home with audio playing; listen for at least 5 minutes.
+- [ ] Swipe Sonora from recents while playing; playback continues. Reopen and reconnect to the queue.
+- [ ] Check notification title, artist and art. Play/pause/next/previous work from notification and lock screen.
+- [ ] Lock the phone for at least 10 minutes; playback continues and progress stays synchronized.
+- [ ] Start another audio app / receive a call: audio focus follows Android policy. Test wired and Bluetooth headset removal: audio pauses rather than switching loudly to speakers.
+- [ ] Test Bluetooth media buttons for play/pause and skip.
+- [ ] Stop playback and remove the app from recents; no orphan playing service remains.
+- [ ] Force-stop / reboot: playback stops and the in-memory queue is cleared (documented beta scope).
+
+## Persistence and data
+
+- [ ] Favorite a search result, restart/force-stop/reopen, verify it is still in Library.
+- [ ] Unfavorite from full player; every visible heart and library row updates.
+- [ ] Start a track, verify it appears in history. A failed load must not create a history entry.
+- [ ] Replay a track; its history entry moves to the top without duplicate rows.
+- [ ] Clear history, confirm favorites remain. Cancel the clear dialog and verify nothing changes.
+- [ ] Open Library offline; saved metadata remains available and starting audio reports a recoverable error.
+
+Attach only redacted logs when reporting failures. Audible output, physical headset behavior, manufacturer power management and lock-screen usability still need a human with a phone even when automated emulator tests pass.

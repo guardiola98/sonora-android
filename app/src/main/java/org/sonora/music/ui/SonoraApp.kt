@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import coil3.compose.AsyncImage
+import org.sonora.music.data.PlaylistSummary
 import org.sonora.music.domain.Track
 import org.sonora.music.domain.formatDuration
 import org.sonora.music.playback.PlayerSnapshot
@@ -47,6 +48,11 @@ import org.sonora.music.playback.PlayerSnapshot
     val search by vm.search.state.collectAsStateWithLifecycle()
     val favorites by vm.favorites.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
+    val playlists by vm.playlists.collectAsStateWithLifecycle()
+    val selectedPlaylist by vm.selectedPlaylist.collectAsStateWithLifecycle()
+    val playlistTracks by vm.playlistTracks.collectAsStateWithLifecycle()
+    val importState by vm.importer.state.collectAsStateWithLifecycle()
+    var showImport by rememberSaveable { mutableStateOf(false) }
     val playerError by vm.playerError.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
     val favoriteIds = remember(favorites) { favorites.map { it.url }.toSet() }
@@ -57,6 +63,8 @@ import org.sonora.music.playback.PlayerSnapshot
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.dismissMessage() } }
     LaunchedEffect(player.current) { if (player.current == null) showPlayer = false }
+    BackHandler(showImport && !showPlayer) { showImport = false }
+    BackHandler(tab == 2 && selectedPlaylist != null && !showImport && !showPlayer) { vm.selectPlaylist(null) }
     BackHandler(showPlayer) { showPlayer = false }
     val onSearch: (String) -> Unit = { tab = 1; vm.search.search(it) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -81,19 +89,22 @@ import org.sonora.music.playback.PlayerSnapshot
                         NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
                             listOf("Home" to Icons.Rounded.Home, "Search" to Icons.Rounded.Search, "Library" to Icons.Rounded.LibraryMusic)
                                 .forEachIndexed { i, (label, icon) ->
-                                    NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Icon(icon, label) }, label = { Text(label) })
+                                    NavigationBarItem(selected = tab == i, onClick = { tab = i; showImport = false }, icon = { Icon(icon, label) }, label = { Text(label) })
                                 }
                         }
                     }
                 }) { padding ->
                 Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                    AnimatedContent(tab, label = "screen", modifier = Modifier.widthIn(max = 840.dp).fillMaxSize()) { selected ->
+                    if (showImport) ImportScreen(vm, importState, onClose = { showImport = false; tab = 2 })
+                    else AnimatedContent(tab, label = "screen", modifier = Modifier.widthIn(max = 840.dp).fillMaxSize()) { selected ->
                         when (selected) {
                             0 -> HomeScreen(favorites.map { it.track() }, history.map { it.track() }, favoriteIds, player, onSearch,
                                 onPlay = vm.playback::play, onFavorite = vm::favorite, onEnqueue = vm::enqueue, onLibrary = { tab = 2 })
                             1 -> SearchScreen(search, favoriteIds, player.connected, onSearch, vm.playback::play, vm::favorite, vm::enqueue)
                             else -> LibraryScreen(favorites.map { it.track() }, history.map { it.track() }, favoriteIds, player.connected,
-                                vm.playback::play, vm::favorite, vm::enqueue, vm::clearHistory, { tab = 1 })
+                                vm.playback::play, vm::favorite, vm::enqueue, vm::clearHistory, { tab = 1 },
+                                playlists, playlists.firstOrNull { it.playlist.id == selectedPlaylist }, playlistTracks.second.takeIf { playlistTracks.first == selectedPlaylist }.orEmpty().map { it.track() },
+                                vm::selectPlaylist, vm::deletePlaylist, { showImport = true })
                         }
                     }
                 }
@@ -212,34 +223,69 @@ import org.sonora.music.playback.PlayerSnapshot
 }
 
 @Composable private fun LibraryScreen(favorites: List<Track>, history: List<Track>, favoriteIds: Set<String>, connected: Boolean,
-    onPlay: (List<Track>, Int) -> Unit, onFavorite: (Track) -> Unit, onEnqueue: (Track) -> Unit, onClear: () -> Unit, onSearch: () -> Unit) {
-    var historyTab by rememberSaveable { mutableStateOf(false) }
+    onPlay: (List<Track>, Int) -> Unit, onFavorite: (Track) -> Unit, onEnqueue: (Track) -> Unit, onClear: () -> Unit, onSearch: () -> Unit,
+    playlists: List<PlaylistSummary>, selected: PlaylistSummary?, playlistTracks: List<Track>,
+    onSelectPlaylist: (Long?) -> Unit, onDeletePlaylist: (Long) -> Unit, onImport: () -> Unit) {
+    var section by rememberSaveable { mutableIntStateOf(0) }
     var confirm by remember { mutableStateOf(false) }
-    val tracks = if (historyTab) history else favorites
+    var delete by remember { mutableStateOf<PlaylistSummary?>(null) }
+    val tracks = if (selected != null) playlistTracks else if (section == 1) history else favorites
     Column {
-        Text("Your library", Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Row(Modifier.padding(horizontal = 24.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FilterChip(!historyTab, { historyTab = false }, label = { Text("Favorites · ${favorites.size}") })
-            FilterChip(historyTab, { historyTab = true }, label = { Text("History · ${history.size}") })
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (selected != null) IconButton(onClick = { onSelectPlaylist(null) }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back to playlists") }
+            Text(selected?.playlist?.name ?: "Your library", Modifier.weight(1f).padding(start = 8.dp), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            IconButton(onClick = onImport) { Icon(Icons.Rounded.FileDownload, "Import music", tint = MaterialTheme.colorScheme.primary) }
         }
-        if (tracks.isNotEmpty()) Row(Modifier.padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-            FilledTonalButton(onClick = { onPlay(tracks, 0) }, enabled = connected) { Icon(Icons.Rounded.PlayArrow, null); Text("Play all") }
-            Spacer(Modifier.weight(1f))
-            if (historyTab) TextButton(onClick = { confirm = true }) { Text("Clear history") }
+        if (selected == null) LazyRow(contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { FilterChip(section == 0, { section = 0 }, label = { Text("Favorites · ${favorites.size}") }) }
+            item { FilterChip(section == 1, { section = 1 }, label = { Text("History · ${history.size}") }) }
+            item { FilterChip(section == 2, { section = 2 }, label = { Text("Playlists · ${playlists.size}") }) }
         }
-        LazyColumn(contentPadding = PaddingValues(vertical = 16.dp)) {
-            if (tracks.isEmpty()) item {
-                EmptyState(if (historyTab) Icons.Rounded.History else Icons.Rounded.FavoriteBorder,
-                    if (historyTab) "Start listening" else "Keep the good ones",
-                    if (historyTab) "Tracks appear here after playback begins." else "Your favorite tracks will appear here.")
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TextButton(onClick = onSearch) { Text("Discover music") } }
+        if (selected != null || section != 2) {
+            if (tracks.isNotEmpty()) Row(Modifier.padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+                FilledTonalButton(onClick = { onPlay(tracks, 0) }, enabled = connected) { Icon(Icons.Rounded.PlayArrow, null); Text("Play all") }
+                Spacer(Modifier.weight(1f))
+                if (selected != null) IconButton(onClick = { delete = selected }) { Icon(Icons.Rounded.DeleteOutline, "Delete playlist") }
+                else if (section == 1) TextButton(onClick = { confirm = true }) { Text("Clear history") }
             }
-            itemsIndexed(tracks, key = { _, t -> t.url }) { i, track -> TrackRow(track, track.url in favoriteIds, connected, { onPlay(tracks, i) }, { onFavorite(track) }, { onEnqueue(track) }) }
+            LazyColumn(contentPadding = PaddingValues(vertical = 16.dp)) {
+                if (tracks.isEmpty()) item {
+                    EmptyState(if (section == 1) Icons.Rounded.History else Icons.Rounded.FavoriteBorder,
+                        if (section == 1) "Start listening" else "Keep the good ones",
+                        if (section == 1) "Tracks appear here after playback begins." else "Favorite a song or import your likes from YouTube Music.")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        TextButton(onClick = onSearch) { Text("Discover music") }
+                        TextButton(onClick = onImport) { Text("Import music") }
+                    }
+                }
+                itemsIndexed(tracks, key = { _, t -> t.url }) { i, track -> TrackRow(track, track.url in favoriteIds, connected, { onPlay(tracks, i) }, { onFavorite(track) }, { onEnqueue(track) }) }
+            }
+        } else {
+            LazyColumn(contentPadding = PaddingValues(vertical = 16.dp)) {
+                if (playlists.isEmpty()) item {
+                    EmptyState(Icons.AutoMirrored.Rounded.QueueMusic, "Bring your playlists", "Import a YouTube Music link or a Takeout export.")
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Button(onClick = onImport) { Text("Import playlists") } }
+                }
+                items(playlists, key = { it.playlist.id }) { entry ->
+                    Row(Modifier.fillMaxWidth().clickable { onSelectPlaylist(entry.playlist.id) }.padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
+                        Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                            Text(entry.playlist.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text("${entry.trackCount} tracks", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        IconButton(onClick = { delete = entry }) { Icon(Icons.Rounded.DeleteOutline, "Delete ${entry.playlist.name}") }
+                    }
+                }
+            }
         }
     }
     if (confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("Clear listening history?") },
-        text = { Text("Favorites will stay in your library.") }, confirmButton = { TextButton(onClick = { onClear(); confirm = false }) { Text("Clear") } },
+        text = { Text("Favorites and playlists will stay in your library.") }, confirmButton = { TextButton(onClick = { onClear(); confirm = false }) { Text("Clear") } },
         dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancel") } })
+    delete?.let { entry -> AlertDialog(onDismissRequest = { delete = null }, title = { Text("Delete ${entry.playlist.name}?") },
+        text = { Text("This removes the playlist from Sonora only. Favorites, history and your YouTube account are kept.") },
+        confirmButton = { TextButton(onClick = { onDeletePlaylist(entry.playlist.id); delete = null }) { Text("Delete") } },
+        dismissButton = { TextButton(onClick = { delete = null }) { Text("Cancel") } }) }
 }
 
 @Composable private fun TrackRow(track: Track, favorite: Boolean, connected: Boolean, onPlay: () -> Unit, onFavorite: () -> Unit, onEnqueue: () -> Unit) {
@@ -248,7 +294,7 @@ import org.sonora.music.playback.PlayerSnapshot
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(track.title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(3.dp))
-            Text("${track.artist} · ${formatDuration(track.durationSeconds)}", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${track.artist} · ${if (track.durationSeconds > 0) formatDuration(track.durationSeconds) else "—"}", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick = onFavorite) { Icon(if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
             if (favorite) "Remove ${track.title} from favorites" else "Favorite ${track.title}", tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -352,7 +398,7 @@ import org.sonora.music.playback.PlayerSnapshot
 }
 @Composable private fun AboutDialog(onDismiss: () -> Unit) {
     val uri = LocalUriHandler.current
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora 0.1 beta") },
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora 0.1 beta 2") },
         text = { Column {
             Text("An independent, open-source music player. Built with NewPipeExtractor and Android Media3. Not affiliated with YouTube or Google.")
             Spacer(Modifier.height(12.dp))

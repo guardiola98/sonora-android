@@ -4,6 +4,8 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.content.ComponentName
 import android.net.Uri
+import androidx.lifecycle.ViewModelProvider
+import org.sonora.music.ui.MusicViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -48,6 +50,19 @@ class PlaybackDeviceTest {
             val controller = future.get(15, TimeUnit.SECONDS)
             try { block(scenario, controller) }
             finally { main { controller.stop(); controller.clearMediaItems(); controller.release() } }
+        }
+    }
+    @Test fun closingAndReopeningActivityDoesNotReportAPlayerFailure() {
+        val app = context.applicationContext as SonoraApplication
+        repeat(2) {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                lateinit var vm: MusicViewModel
+                scenario.onActivity { vm = ViewModelProvider(it, MusicViewModel.Factory(app))[MusicViewModel::class.java] }
+                await("UI controller did not connect") { vm.playback.state.value.connected }
+                main { assertNull(app.graph.playbackStatus.error.value) }
+            }
+            instrumentation.waitForIdleSync()
+            main { assertNull("Intentional release must not report disconnection", app.graph.playbackStatus.error.value) }
         }
     }
     @Test fun realDecoderSessionSeekQueueAndBackgroundPlayback() = connected { scenario, controller ->

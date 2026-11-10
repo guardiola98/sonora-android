@@ -4,22 +4,22 @@
 
 An independent, open-source music player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. No account, API key, ads or analytics.
 
-**Version: 0.1.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
+**Version: 0.1.0-beta02.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
 <p>
   <img src="docs/screenshots/home.png" width="220" alt="Sonora home on Android 15" />
   <img src="docs/screenshots/search.png" width="220" alt="Sonora search on Android 15" />
-  <img src="docs/screenshots/library.png" width="220" alt="Sonora library on Android 15" />
+  <img src="docs/screenshots/import-preview.png" width="220" alt="Sonora import preview with labeled test fixtures" />
 </p>
 
-Actual emulator screenshots from a fresh installation; no demo tracks are seeded.
+Actual emulator screenshots: Home/Search from beta01 and the import preview from beta02. No demo tracks are seeded; the import preview uses explicitly labeled test fixtures.
 
 ## Install
 
 1. Open [Android beta → latest successful run](https://github.com/guardiola98/sonora-android/actions/workflows/android.yml).
-2. Download the `sonora-0.1.0-beta01-debug` artifact (GitHub sign-in may be required).
-3. Extract the ZIP and install `sonora-0.1.0-beta01-debug.apk`. Android may ask you to allow installation from the app opening the APK.
-4. Search for a song, tap a result, and open the mini-player for the full controls.
+2. Download the `sonora-0.1.0-beta02-debug` artifact (GitHub sign-in may be required).
+3. Extract the ZIP and install `sonora-0.1.0-beta02-debug.apk`. Android may ask you to allow installation from the app opening the APK.
+4. Search for a song, or open **Library → Import music** to bring your playlists and likes. See the [import guide](docs/IMPORTING.md).
 
 The artifact also includes the exact source snapshot, license, attribution and APK SHA-256. Debug APKs are signed automatically with an ephemeral development key. Different CI runs or local machines may use different keys; Android then requires uninstalling the old build before installing the new one, which clears local data. This beta does not contain a production signing key.
 
@@ -31,7 +31,10 @@ The artifact also includes the exact source snapshot, license, attribution and A
 - Persistent mini-player across Home, Search and Library.
 - `MediaSessionService` with automatic media notification, lock-screen controls, audio focus and headphone-disconnect handling.
 - Queue: play a list, append, jump, remove, move up and clear.
-- Room favorites and listening history; history starts only when the player reports playback.
+- Room favorites, listening history and imported playlists; history starts only when the player reports playback.
+- Import public/unlisted YouTube Music playlist links, including subsequent pages.
+- Import Takeout ZIP/CSV playlists, library songs and exported likes, with a preview and per-list Playlist/Favorites choices. Reimports merge without duplicating entries or removing existing likes.
+- Optional missing-title lookup; file imports also work offline. Database upgrades preserve existing favorites and history.
 - Network/source errors with retry; short-lived stream cache and one automatic fresh extraction on HTTP 403/410.
 
 The Home mood chips submit real searches. The home shelves are built from your own favorites and history. The library is available offline; streaming still requires a connection.
@@ -54,11 +57,14 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 The wrapper uses Gradle 8.13 with a pinned distribution SHA-256. Dependency versions are pinned in [`gradle/libs.versions.toml`](gradle/libs.versions.toml). See [dependency decisions and official references](docs/DEPENDENCIES.md).
 
-Unit tests cover persistent Room data, independent favorites/history updates, history clearing, stale search cancellation, error/retry behavior and stream cache expiry/invalidation/concurrency. Live source tests are skipped by default so public CI is deterministic.
+Unit tests cover persistent Room data, the v1→v2 migration, CSV/ZIP parsing and size bounds, atomic imports, deduplication, independent favorites/history updates, history clearing, stale search cancellation, error/retry behavior and stream cache expiry/invalidation/concurrency. Live source tests are skipped by default so public CI is deterministic.
 
 ```bash
 # Opt-in: real search, extraction and an HTTP audio-byte probe (not an audio playback test)
 SONORA_LIVE_TESTS=true ./gradlew testDebugUnitTest --tests '*LiveSourceTest' --rerun-tasks
+
+# Opt-in: fetch a real public playlist across multiple pages
+SONORA_LIVE_IMPORT=true ./gradlew testDebugUnitTest --tests '*LiveImportTest'
 
 # With a connected phone or emulator: real decoder/session/queue/background test
 ./gradlew connectedDebugAndroidTest
@@ -74,22 +80,25 @@ The device test creates a temporary WAV fixture at runtime; this is never includ
 ```text
 Compose screens → MusicViewModel → SearchPresenter → MusicSource
                             │                           └── NewPipeMusicSource → external NewPipeExtractor
-                            ├── Room LibraryDao
+                            ├── ImportPresenter → ImportRepository → LibraryImportSource
+                            │                  └── TakeoutParser      └── NewPipeMusicSource
+                            ├── Room LibraryDao (schema v2, explicit v1 migration)
                             └── MediaController → PlaybackService / MediaSession → ExoPlayer
                                                                          └── StreamResolver → MusicSource
 ```
 
-- `domain/` contains stable track metadata and the `MusicSource` interface, with no UI/player dependency.
+- `domain/` contains stable track metadata and the `MusicSource` / `LibraryImportSource` interfaces, with no UI/player dependency.
 - `data/` owns the OkHttp transport adapter, external extractor integration, short-lived stream cache and Room database.
 - `playback/` owns ExoPlayer, the session/service and controller state. The service is the single playback owner.
 - `ui/` contains Compose screens, the MVVM presentation layer and lifecycle-aware StateFlow collection.
 - A small application graph supplies dependencies; no global Activity or player references are retained by the UI.
 
-Stream URLs are resolved lazily on ExoPlayer's loader path, on an IO dispatcher. They are never persisted in Room or passed to the screens. Signed URL expiry triggers a bounded retry, with a manual retry if the source still fails. Favorites and history contain canonical source URLs and metadata only. Core library NIO desugaring supports NewPipeExtractor on API 26–32.
+Stream URLs are resolved lazily on ExoPlayer's loader path, on an IO dispatcher. They are never persisted in Room or passed to the screens. Signed URL expiry triggers a bounded retry, with a manual retry if the source still fails. Favorites, history and playlists contain canonical source URLs and metadata only. File parsing is independent of networking and playback; importing does not start playback or create listening-history entries. The import transaction either completes or rolls back. Core library NIO desugaring supports NewPipeExtractor on API 26–32.
 
 ## Beta scope
 
-- Search returns the first page of normal video/audio results; no pagination, live-stream or playlist import in 0.1.
+- Search returns the first page of normal video/audio results; live streams are excluded. Playlist imports follow pagination, up to the documented import limits.
+- Import is a one-time copy, not account synchronization. Sonora never signs in to Google. Likes/private playlists require exported files; only tracks present in the export can be imported. [Formats and limits](docs/IMPORTING.md).
 - Artist text is the uploader name reported by the source, not a curated music database.
 - Queue survives screen changes and normal background playback, but is intentionally not restored after process death, force-stop or reboot.
 - No downloads, offline audio cache, account sign-in, casting or equalizer.

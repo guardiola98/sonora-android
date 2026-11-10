@@ -1,5 +1,11 @@
 package org.sonora.music.ui
 
+import android.net.Uri
+import android.provider.OpenableColumns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
+import org.sonora.music.data.TakeoutParser
+import org.sonora.music.domain.ImportPreview
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -12,12 +18,48 @@ import org.sonora.music.domain.Track
 import org.sonora.music.playback.PlaybackConnection
 
 @UnstableApi
-class MusicViewModel(app: SonoraApplication) : ViewModel() {
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
     private val graph = app.graph
+    private val mutableMessage = MutableStateFlow<String?>(null)
     val search = SearchPresenter(graph.source, viewModelScope)
     val playback = PlaybackConnection(app, viewModelScope, graph.playbackStatus, graph.streams)
     val playerError = graph.playbackStatus.error
-    private val mutableMessage = MutableStateFlow<String?>(null)
+    val importer = ImportPresenter(graph.importer, viewModelScope)
+    val playlists = graph.library.playlists().catch { mutableMessage.value = "Could not read playlists."; emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private val selection = MutableStateFlow<Long?>(null)
+    val selectedPlaylist = selection.asStateFlow()
+    val playlistTracks = selection.flatMapLatest { id -> if (id == null) flowOf(null to emptyList<org.sonora.music.data.LibraryTrack>()) else graph.library.playlistTracks(id).map { id to it } }
+        .catch { mutableMessage.value = "Could not read playlist tracks."; emit(null to emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null to emptyList())
+    fun selectPlaylist(id: Long?) { selection.value = id }
+    fun deletePlaylist(id: Long) = viewModelScope.launch {
+        try { graph.library.deletePlaylist(id); if (selection.value == id) selection.value = null }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { mutableMessage.value = "Could not delete this playlist." }
+    }
+    fun importFiles(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        importer.load {
+            runInterruptible(Dispatchers.IO) {
+                require(uris.size <= 20) { "Select up to 20 files at a time." }
+                val collections = mutableListOf<org.sonora.music.domain.ImportCollection>()
+                var ignored = 0
+                for (uri in uris) {
+                    val resolver = app.contentResolver
+                    val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) cursor.getString(0) else null
+                    } ?: uri.lastPathSegment ?: "export.csv"
+                    val parsed = resolver.openInputStream(uri)?.use { TakeoutParser().read(name, it) }
+                        ?: throw IllegalArgumentException("Could not open $name. Download it to your device and retry.")
+                    collections.addAll(parsed.collections); ignored += parsed.ignoredFiles
+                    require(collections.sumOf { it.tracks.size } <= 10_000) { "Import up to 10,000 track entries at a time." }
+                }
+                ImportPreview(collections, ignored)
+            }
+        }
+    }
     val message = mutableMessage.asStateFlow()
     val favorites = graph.library.favorites().catch { mutableMessage.value = "Could not read favorites."; emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

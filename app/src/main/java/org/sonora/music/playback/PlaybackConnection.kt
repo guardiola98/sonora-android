@@ -19,12 +19,16 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
     private val mutable = MutableStateFlow(PlayerSnapshot())
     val state = mutable.asStateFlow()
     private var controller: MediaController? = null
+    private var released = false
+    private val disconnectedMessage = "Player disconnected. Reopen Sonora to reconnect."
+    private val connectionFailedMessage = "Could not connect to the player. Reopen Sonora to retry."
     private val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
         .setListener(object : MediaController.Listener {
             override fun onDisconnected(controller: MediaController) {
+                if (released) return
                 this@PlaybackConnection.controller = null
                 mutable.value = PlayerSnapshot()
-                status.report("Player disconnected. Reopen Sonora to reconnect.")
+                status.report(disconnectedMessage)
             }
         }).buildAsync()
     private val listener = object : Player.Listener {
@@ -32,8 +36,12 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
     }
     init {
         future.addListener({
-            try { controller = future.get().also { it.addListener(listener) }; publish() }
-            catch (_: Exception) { status.report("Could not connect to the player. Reopen Sonora to retry.") }
+            if (released) return@addListener
+            try {
+                controller = future.get().also { it.addListener(listener) }
+                if (status.error.value in listOf(disconnectedMessage, connectionFailedMessage)) status.report(null)
+                publish()
+            } catch (_: Exception) { status.report(connectionFailedMessage) }
         }, ContextCompat.getMainExecutor(context))
         scope.launch { while (isActive) { publish(); delay(500) } }
     }
@@ -65,5 +73,10 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
     fun remove(index: Int) { controller?.apply { if (index in 0 until mediaItemCount) removeMediaItem(index) } }
     fun moveUp(index: Int) { controller?.apply { if (index in 1 until mediaItemCount) moveMediaItem(index, index - 1) } }
     fun clear() { controller?.apply { stop(); clearMediaItems() }; status.report(null) }
-    fun release() { controller?.removeListener(listener); MediaController.releaseFuture(future) }
+    fun release() {
+        released = true // Intentional Activity/ViewModel teardown is not a playback error.
+        controller?.removeListener(listener)
+        controller = null
+        MediaController.releaseFuture(future)
+    }
 }

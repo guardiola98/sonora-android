@@ -51,3 +51,17 @@ Record device/model, Android version, commit, APK SHA-256, network type and resu
 - [ ] Open Library offline; saved metadata remains available and starting audio reports a recoverable error.
 
 Attach only redacted logs when reporting failures. Audible output, physical headset behavior, manufacturer power management and lock-screen usability still need a human with a phone even when automated emulator tests pass.
+
+## Import and upgrade (beta02)
+
+- [ ] Upgrade beta01 with an APK signed by the same key. Existing favorites/history survive; never uninstall to test migration. Different debug keys require uninstall and lose local data.
+- [ ] Use the actual Android document picker with a real Takeout ZIP and multiple CSVs, from local Downloads and a document-provider app. Cancel the picker and return without changes.
+- [ ] Check a real account's private playlists, exported library songs and exported likes against its CSV contents. Verify manual Playlist/Favorites choices and skipped-entry counts. Do not assume omitted likes can be recovered.
+- [ ] Preview a public/unlisted playlist with more than 100 tracks. Compare first/last entries and order; cancel before saving and verify the library is unchanged.
+- [ ] Import as Playlist, Favorites, both and neither. Reimport the same data and confirm no duplicate playlist entries or extra hearts; existing history stays untouched.
+- [ ] Open an imported playlist, play all, play a row, enqueue, favorite/unfavorite and navigate back. Mini-player and background playback continue normally.
+- [ ] Clear history and confirm imported playlists/favorites remain. Delete a playlist, cancel its confirmation, then delete; favorites/history remain and YouTube is unchanged.
+- [ ] Import an ID-only CSV in airplane mode with title lookup disabled. Reconnect and reimport with lookup to fill missing titles; unavailable references remain visible and playback fails cleanly.
+- [ ] Cancel during metadata lookup; no partial data is written. Rotate/navigate while importing; progress remains consistent. Force-stop before final save and verify no partial collections appear.
+- [ ] Try a private/removed playlist link, a malformed URL, an invalid CSV, duplicate IDs, oversized ZIP and unsupported HTML/JSON. Errors are actionable; no library data is lost.
+- [ ] Check large font, TalkBack and landscape on the preview, all destination chips, long playlist names and the import button at the bottom.

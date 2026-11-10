@@ -18,9 +18,10 @@ class AppGraph(application: Application) {
     private val http = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(25, TimeUnit.SECONDS).callTimeout(40, TimeUnit.SECONDS).build()
     init { NewPipe.init(ExtractorDownloader(http), Localization("en", "GB")) }
-    val source: MusicSource = NewPipeMusicSource()
+    val source = NewPipeMusicSource()
     val streams = StreamResolver(source)
-    val database = Room.databaseBuilder(application, LibraryDatabase::class.java, "sonora.db").build()
+    val database = Room.databaseBuilder(application, LibraryDatabase::class.java, "sonora.db").addMigrations(DatabaseMigrations.FROM_1_TO_2).build()
     val library = database.library()
+    val importer = ImportRepository(source, library)
     val playbackStatus = PlaybackStatus()
 }

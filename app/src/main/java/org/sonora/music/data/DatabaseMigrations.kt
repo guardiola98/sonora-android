@@ -4,6 +4,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object DatabaseMigrations {
+    val FROM_3_TO_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS podcast_feeds (feedUrl TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, author TEXT NOT NULL, artwork TEXT NOT NULL, description TEXT NOT NULL, subscribed INTEGER NOT NULL, refreshedAt INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS podcast_episodes (reference TEXT NOT NULL PRIMARY KEY, feedUrl TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, artwork TEXT NOT NULL, durationSeconds INTEGER NOT NULL, publishedAt INTEGER NOT NULL, FOREIGN KEY(feedUrl) REFERENCES podcast_feeds(feedUrl) ON UPDATE NO ACTION ON DELETE CASCADE)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_podcast_episodes_feedUrl ON podcast_episodes(feedUrl)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS podcast_progress (reference TEXT NOT NULL PRIMARY KEY, positionMs INTEGER NOT NULL, durationMs INTEGER NOT NULL, completed INTEGER NOT NULL, updatedAt INTEGER NOT NULL)")
+        }
+    }
     val FROM_2_TO_3 = object : Migration(2, 3) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("CREATE TABLE IF NOT EXISTS playback_checkpoint (id INTEGER NOT NULL PRIMARY KEY, queueJson TEXT NOT NULL, currentIndex INTEGER NOT NULL, positionMs INTEGER NOT NULL)")

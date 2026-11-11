@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit
 class QueueRestartDeviceTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app get() = instrumentation.targetContext.applicationContext as SonoraApplication
+    private val podcastUrl = org.sonora.music.domain.PodcastLinks.reference("https://example.org/sonora-test.xml", "queue-podcast-fixture")
     private val url = "https://www.youtube.com/watch?v=s0n0raQ0001"
     private fun await(label: String, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 15_000
@@ -41,7 +42,11 @@ class QueueRestartDeviceTest {
     @Test fun seedQueueBeforeProcessDeath() {
         assumeTrue(InstrumentationRegistry.getArguments().getString("queueStage") == "seed")
         session { controller ->
-            val tracks = listOf(Track(url, "Queue persistence fixture", "Sonora tests", "", 120), Track("https://www.youtube.com/watch?v=s0n0raQ0002", "Second queue fixture", "Sonora tests", "", 180))
+            val tracks = listOf(Track(url, "Queue persistence fixture", "Sonora tests", "", 120), Track(podcastUrl, "Podcast queue fixture", "Sonora tests", "", 180))
+            runBlocking {
+                app.graph.podcastLibrary.put(org.sonora.music.data.SavedPodcast("https://example.org/sonora-test.xml", "Podcast restart fixture", "Sonora tests", "", "", true, 1))
+                app.graph.podcastLibrary.saveProgress(org.sonora.music.data.PodcastProgress(podcastUrl, 12_345, 180_000, false, 100))
+            }
             instrumentation.runOnMainSync { controller.setMediaItems(tracks.map { it.toMediaItem() }, 1, 12_345); controller.pause() }
             await("Queue was not committed") { runBlocking { app.graph.library.checkpoint()?.let { val q = PlaybackQueueStore.decode(it); q.tracks.size == 2 && q.index == 1 && q.positionMs == 12_345L } == true } }
         }
@@ -52,10 +57,16 @@ class QueueRestartDeviceTest {
             await("Queue was not restored") { var ready = false; instrumentation.runOnMainSync { ready = controller.mediaItemCount == 2 }; ready }
             instrumentation.runOnMainSync {
                 assertEquals(1, controller.currentMediaItemIndex)
+                assertEquals(podcastUrl, controller.currentMediaItem?.mediaId)
                 assertEquals(12_345L, controller.currentPosition)
                 assertFalse(controller.playWhenReady); assertFalse(controller.isPlaying)
             }
-            runBlocking { assertNull(app.graph.library.find(url)) }
+            runBlocking {
+                assertNull(app.graph.library.find(url)); assertNull(app.graph.library.find(podcastUrl))
+                assertTrue(app.graph.podcastLibrary.find("https://example.org/sonora-test.xml")!!.subscribed)
+                assertEquals(12_345L, app.graph.podcastLibrary.progressFor(podcastUrl)!!.resumeMs)
+                app.graph.podcastLibrary.subscribe("https://example.org/sonora-test.xml", false)
+            }
             instrumentation.runOnMainSync { controller.clearMediaItems() }
             await("Cleared queue not persisted") { runBlocking { app.graph.library.checkpoint()?.let { PlaybackQueueStore.decode(it).tracks.isEmpty() } == true } }
         }

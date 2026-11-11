@@ -20,7 +20,8 @@ data class PlayerSnapshot(
     val playing: Boolean = false,
     val buffering: Boolean = false,
     val positionMs: Long = 0,
-    val durationMs: Long = 0
+    val durationMs: Long = 0,
+    val speed: Float = 1f
 ) { val current: Track? get() = queue.getOrNull(index) }
 fun Track.toMediaItem(): MediaItem = MediaItem.Builder().setMediaId(url).setUri(url)
     .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist)
@@ -29,3 +30,5 @@ fun Track.toMediaItem(): MediaItem = MediaItem.Builder().setMediaId(url).setUri(
 fun MediaItem.toTrack() = Track(mediaId, mediaMetadata.title?.toString().orEmpty(),
     mediaMetadata.artist?.toString().orEmpty(), mediaMetadata.artworkUri?.toString().orEmpty(),
     mediaMetadata.extras?.getLong("durationSeconds") ?: 0)
+
+const val MARK_PODCAST_PLAYED = "org.sonora.music.MARK_PODCAST_PLAYED"

@@ -19,11 +19,19 @@ class AppGraph(application: Application) {
         .readTimeout(25, TimeUnit.SECONDS).callTimeout(40, TimeUnit.SECONDS).build()
     init { NewPipe.init(ExtractorDownloader(http), Localization("en", "GB")) }
     val source = NewPipeMusicSource()
-    val streams = StreamResolver(source)
-    val database = Room.databaseBuilder(application, LibraryDatabase::class.java, "sonora.db").addMigrations(DatabaseMigrations.FROM_1_TO_2, DatabaseMigrations.FROM_2_TO_3).build()
+    val podcasts = RssPodcastSource(http.newBuilder().followSslRedirects(false).dns(object : okhttp3.Dns {
+        override fun lookup(hostname: String): List<java.net.InetAddress> = okhttp3.Dns.SYSTEM.lookup(hostname).also { addresses ->
+            if (addresses.any { it.isAnyLocalAddress || it.isLoopbackAddress || it.isLinkLocalAddress || it.isSiteLocalAddress || it.isMulticastAddress })
+                throw java.net.UnknownHostException("Only public podcast servers are supported.")
+        }
+    }).build())
+    val streams = StreamResolver(source, podcasts = podcasts)
+    val database = Room.databaseBuilder(application, LibraryDatabase::class.java, "sonora.db").addMigrations(DatabaseMigrations.FROM_1_TO_2, DatabaseMigrations.FROM_2_TO_3, DatabaseMigrations.FROM_3_TO_4).build()
     val library = database.library()
+    val podcastLibrary = database.podcasts()
     val importer = ImportRepository(source, library)
     val playbackStatus = PlaybackStatus()
     private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val podcastProgress = PodcastProgressStore(podcastLibrary, persistenceScope) { playbackStatus.report("Episode progress could not be saved.") }
     val queueStore = PlaybackQueueStore(library, persistenceScope) { playbackStatus.report("Queue could not be saved. Check available storage.") }
 }

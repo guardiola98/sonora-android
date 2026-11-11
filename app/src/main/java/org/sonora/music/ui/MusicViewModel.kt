@@ -24,8 +24,9 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
     private val graph = app.graph
     private val mutableMessage = MutableStateFlow<String?>(null)
     val search = SearchPresenter(graph.source, viewModelScope)
-    val playback = PlaybackConnection(app, viewModelScope, graph.playbackStatus, graph.streams)
+    val playback = PlaybackConnection(app, viewModelScope, graph.playbackStatus, graph.streams, graph.podcastLibrary)
     val playerError = graph.playbackStatus.error
+    val podcasts = PodcastPresenter(graph.podcasts, graph.podcastLibrary, playback, viewModelScope)
     val importer = ImportPresenter(graph.importer, viewModelScope)
     val playlists = graph.library.playlists().catch { mutableMessage.value = "Could not read playlists."; emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -53,7 +54,7 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
                     app.contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes); it.flush() }
                         ?: error("No writable document")
                 }
-                mutableBackup.value = BackupState(message = "Backup saved: ${snapshot.tracks.size} tracks and ${snapshot.playlists.size} playlists.")
+                mutableBackup.value = BackupState(message = "Backup saved: ${snapshot.tracks.size} tracks and ${snapshot.playlists.size} playlists, ${snapshot.podcasts.size} podcast subscriptions and ${snapshot.progress.size} episode positions.")
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { mutableBackup.value = BackupState(error = "Backup could not be saved. Check available storage and choose another location. Delete any incomplete file.") }
         }
@@ -78,7 +79,7 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
         viewModelScope.launch {
             try {
                 val result = graph.library.restoreBackup(preview)
-                mutableBackup.value = BackupState(message = "Restored ${result.tracks} new tracks, ${result.favorites} favorites and ${result.playlists} playlists (${result.entries} new playlist entries).")
+                mutableBackup.value = BackupState(message = "Restored ${result.tracks} new tracks, ${result.favorites} favorites and ${result.playlists} playlists (${result.entries} new playlist entries), plus podcast subscriptions and progress.")
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { mutableBackup.value = initial.copy(error = "Restore failed. No partial changes were saved. Check storage and retry.") }
         }

@@ -22,7 +22,7 @@ data class BackupState(val busy: Boolean = false, val preview: LibraryBackup? = 
     LazyColumn(Modifier.fillMaxWidth().widthIn(max = 840.dp), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Row { IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back to library") }; Text("Backup & restore", style = MaterialTheme.typography.headlineSmall) }
-            Text("Keep a copy of your favorites, playlists and listening history. No account required.")
+            Text("Keep a copy of your favorites, playlists, podcast subscriptions, episode progress and listening history. No account required.")
         }
         if (state.busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("Working on your library… Keep Sonora open.") }
         state.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
@@ -43,7 +43,7 @@ data class BackupState(val busy: Boolean = false, val preview: LibraryBackup? = 
         }
         state.preview?.let { backup -> item {
             Text("Ready to restore", style = MaterialTheme.typography.titleLarge)
-            Text("${backup.tracks.size} tracks · ${backup.favoriteCount} favorites · ${backup.playlists.size} playlists · ${backup.historyCount} history entries")
+            Text("${backup.tracks.size} tracks · ${backup.favoriteCount} favorites · ${backup.playlists.size} playlists · ${backup.historyCount} history entries · ${backup.podcasts.size} podcasts · ${backup.progress.size} episode positions")
             Text("This adds missing data. It does not replace or delete your current library.")
             Button(onClick = vm::restoreBackup, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Merge backup into library") }
             TextButton(onClick = vm::dismissBackupPreview, enabled = !state.busy) { Text("Cancel restore") }

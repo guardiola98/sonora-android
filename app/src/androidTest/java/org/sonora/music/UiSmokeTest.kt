@@ -16,7 +16,7 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 @UnstableApi
 class UiSmokeTest {
-    @Test fun bottomNavigationRendersAllThreeScreens() {
+    @Test fun bottomNavigationRendersAllFourScreens() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         ActivityScenario.launch(MainActivity::class.java).use {
             fun capture(name: String) {
@@ -61,6 +61,8 @@ class UiSmokeTest {
             capture("search")
             navigate("Library", "Your library")
             capture("library")
+            navigate("Podcasts", "Stories worth your time.")
+            capture("podcasts")
         }
     }
 }

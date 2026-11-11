@@ -2,6 +2,9 @@ package org.sonora.music.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import androidx.core.content.ContextCompat
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -15,11 +18,13 @@ import org.sonora.music.domain.Track
 
 @UnstableApi
 class PlaybackConnection(context: Context, private val scope: CoroutineScope,
-    private val status: PlaybackStatus, private val streams: StreamResolver) {
+    private val status: PlaybackStatus, private val streams: StreamResolver, private val podcasts: org.sonora.music.data.PodcastDao) {
     private val mutable = MutableStateFlow(PlayerSnapshot())
     val state = mutable.asStateFlow()
     private var controller: MediaController? = null
     private var released = false
+    private var playRequest = 0
+    private val mainExecutor = ContextCompat.getMainExecutor(context)
     private val disconnectedMessage = "Player disconnected. Reopen Sonora to reconnect."
     private val connectionFailedMessage = "Could not connect to the player. Reopen Sonora to retry."
     private val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
@@ -49,12 +54,18 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
         val c = controller ?: return
         mutable.value = PlayerSnapshot(true, (0 until c.mediaItemCount).map { c.getMediaItemAt(it).toTrack() },
             c.currentMediaItemIndex, c.playWhenReady, c.playbackState == Player.STATE_BUFFERING,
-            c.currentPosition.coerceAtLeast(0), c.duration.takeIf { it > 0 } ?: ((c.currentMediaItem?.toTrack()?.durationSeconds ?: 0) * 1000))
+            c.currentPosition.coerceAtLeast(0), c.duration.takeIf { it > 0 } ?: ((c.currentMediaItem?.toTrack()?.durationSeconds ?: 0) * 1000), c.playbackParameters.speed)
     }
     fun play(tracks: List<Track>, index: Int) {
         if (tracks.isEmpty() || index !in tracks.indices) return
-        status.report(null)
-        controller?.apply { setMediaItems(tracks.map { it.toMediaItem() }, index, 0); prepare(); play() }
+        val request = ++playRequest
+        scope.launch {
+            val position = if (org.sonora.music.domain.PodcastLinks.isEpisode(tracks[index].url)) try { podcasts.progressFor(tracks[index].url)?.resumeMs ?: 0 }
+                catch (e: CancellationException) { throw e } catch (_: Exception) { 0L } else 0L
+            if (request != playRequest || released) return@launch
+            status.report(null)
+            controller?.apply { setMediaItems(tracks.map { it.toMediaItem() }, index, position); prepare(); play() }
+        }
     }
     fun enqueue(track: Track) { controller?.apply { addMediaItem(track.toMediaItem()); if (playbackState == Player.STATE_IDLE) prepare() } }
     fun toggle() { controller?.let { if (it.isPlaying || it.playWhenReady && it.playbackState == Player.STATE_BUFFERING) it.pause() else retry() } }
@@ -67,12 +78,20 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
         }
     }
     fun seek(position: Long) { controller?.seekTo(position.coerceAtLeast(0)) }
+    fun markPodcastPlayed(reference: String, durationMs: Long, completed: Boolean, done: (Boolean) -> Unit) {
+        val c = controller ?: run { done(false); return }
+        val result = c.sendCustomCommand(SessionCommand(MARK_PODCAST_PLAYED, Bundle.EMPTY), Bundle().apply {
+            putString("reference", reference); putLong("durationMs", durationMs); putBoolean("completed", completed)
+        })
+        result.addListener({ done(runCatching { result.get().resultCode == SessionResult.RESULT_SUCCESS }.getOrDefault(false)) }, mainExecutor)
+    }
+    fun speed(value: Float) { controller?.setPlaybackSpeed(value.coerceIn(0.5f, 2f)) }
     fun next() { controller?.seekToNextMediaItem() }
     fun previous() { controller?.seekToPrevious() }
     fun jump(index: Int) { controller?.apply { if (index in 0 until mediaItemCount) { seekTo(index, 0); prepare(); play() } } }
     fun remove(index: Int) { controller?.apply { if (index in 0 until mediaItemCount) removeMediaItem(index) } }
     fun moveUp(index: Int) { controller?.apply { if (index in 1 until mediaItemCount) moveMediaItem(index, index - 1) } }
-    fun clear() { controller?.apply { stop(); clearMediaItems() }; status.report(null) }
+    fun clear() { playRequest++; controller?.apply { stop(); clearMediaItems() }; status.report(null) }
     fun release() {
         released = true // Intentional Activity/ViewModel teardown is not a playback error.
         controller?.removeListener(listener)

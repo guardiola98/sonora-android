@@ -2,6 +2,12 @@ package org.sonora.music.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import androidx.media3.session.SessionError
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import androidx.media3.common.*
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
@@ -19,6 +25,7 @@ import org.sonora.music.SonoraApplication
 import org.sonora.music.data.ExtractorDownloader
 import org.sonora.music.data.SavedQueue
 import org.sonora.music.domain.MusicSourceException
+import org.sonora.music.domain.PodcastLinks
 
 @UnstableApi
 class PlaybackService : MediaSessionService() {
@@ -39,7 +46,7 @@ class PlaybackService : MediaSessionService() {
             .setConnectTimeoutMs(15_000).setReadTimeoutMs(25_000)
         val resolving = ResolvingDataSource.Factory(DefaultDataSource.Factory(this, http)) { spec ->
             val host = spec.uri.host.orEmpty()
-            if (host == "www.youtube.com" || host == "youtube.com" || host == "m.youtube.com" || host == "youtu.be") {
+            if (PodcastLinks.isEpisode(spec.uri.toString()) || host == "www.youtube.com" || host == "youtube.com" || host == "m.youtube.com" || host == "youtu.be") {
                 val stream = runBlocking(Dispatchers.IO) { graph.streams.resolve(spec.uri.toString()) }
                 spec.withUri(stream.url.toUri())
             } else spec
@@ -57,14 +64,31 @@ class PlaybackService : MediaSessionService() {
                         else saveQueue()
                     }
                 }
+                override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+                    val old = oldPosition.mediaItem ?: return
+                    if (recorded && oldPosition.positionMs > 0) graph.podcastProgress.save(old.mediaId, oldPosition.positionMs,
+                        old.toTrack().durationSeconds * 1000, reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION)
+                }
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     refreshed = false; recorded = false
                     graph.playbackStatus.report(null)
+                    if (mediaItem != null && !PodcastLinks.isEpisode(mediaItem.mediaId)) setPlaybackSpeed(1f)
+                    // Automatic/queue transitions resume podcasts too. An explicit seek or restored queue wins.
+                    if (!applyingRestore && mediaItem != null && PodcastLinks.isEpisode(mediaItem.mediaId) && currentPosition == 0L) {
+                        val index = currentMediaItemIndex
+                        scope.launch {
+                            val position = try { graph.podcastLibrary.progressFor(mediaItem.mediaId)?.resumeMs ?: 0 }
+                            catch (e: CancellationException) { throw e }
+                            catch (_: Exception) { 0L }
+                            if (position > 0 && currentMediaItemIndex == index && currentMediaItem?.mediaId == mediaItem.mediaId && currentPosition < 500) seekTo(position)
+                        }
+                    }
                     recordIfPlaying()
                 }
                 override fun onIsPlayingChanged(isPlaying: Boolean) { recordIfPlaying() }
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_READY) graph.playbackStatus.report(null)
+                    if (playbackState == Player.STATE_ENDED) saveEpisodeProgress(completed = true)
                 }
                 override fun onPlayerError(error: PlaybackException) {
                     val causes = generateSequence<Throwable>(error) { it.cause }.toList()
@@ -82,6 +106,7 @@ class PlaybackService : MediaSessionService() {
                         graph.playbackStatus.report(sourceError?.message ?: when {
                             expired -> "The stream expired or is unavailable. Retry to request a fresh stream."
                             error.errorCode in 2000..2999 -> "Audio could not be loaded. Check your connection and retry."
+                            PodcastLinks.isEpisode(url.orEmpty()) -> "Podcast audio is unavailable or unsupported. Refresh the feed or try another episode."
                             else -> "Playback failed. Retry or choose another track."
                         })
                     }
@@ -92,8 +117,28 @@ class PlaybackService : MediaSessionService() {
         session = MediaSession.Builder(this, player).setSessionActivity(activity)
             .setCallback(object : MediaSession.Callback {
                 override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
-                    return if (controller.packageName == packageName || controller.isTrusted) super.onConnect(session, controller)
-                    else MediaSession.ConnectionResult.reject()
+                    if (controller.packageName != packageName && !controller.isTrusted) return MediaSession.ConnectionResult.reject()
+                    val base = super.onConnect(session, controller)
+                    if (controller.packageName != packageName) return base
+                    return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                        .setAvailablePlayerCommands(base.availablePlayerCommands)
+                        .setAvailableSessionCommands(base.availableSessionCommands.buildUpon().add(SessionCommand(MARK_PODCAST_PLAYED, Bundle.EMPTY)).build()).build()
+                }
+                override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo,
+                    customCommand: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
+                    if (customCommand.customAction != MARK_PODCAST_PLAYED) return super.onCustomCommand(session, controller, customCommand, args)
+                    val reference = args.getString("reference").orEmpty()
+                    if (controller.packageName != packageName || !PodcastLinks.isEpisode(reference))
+                        return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
+                    val duration = args.getLong("durationMs").coerceIn(0, 604800000)
+                    val completed = args.getBoolean("completed")
+                    // Execute on the real player, not a controller's optimistic queue mask.
+                    // Its discontinuity callbacks enqueue their checkpoints before this explicit write.
+                    if (player.currentMediaItem?.mediaId == reference) {
+                        for (index in player.mediaItemCount - 1 downTo 0) if (player.getMediaItemAt(index).mediaId == reference) player.removeMediaItem(index)
+                    }
+                    graph.podcastProgress.save(reference, if (completed) duration else 0, duration, completed)
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
             }).build()
         scope.launch {
@@ -122,8 +167,14 @@ class PlaybackService : MediaSessionService() {
             catch (_: Exception) { graph.playbackStatus.report("Playing, but history could not be saved.") }
         }
     }
+    private fun saveEpisodeProgress(completed: Boolean = player.playbackState == Player.STATE_ENDED) {
+        if (!recorded) return
+        val track = player.currentMediaItem?.toTrack() ?: return
+        graph.podcastProgress.save(track.url, player.currentPosition, player.duration.takeIf { it > 0 } ?: track.durationSeconds * 1000, completed)
+    }
     private fun saveQueue() {
         if (loadingQueue) return
+        saveEpisodeProgress()
         graph.queueStore.save(SavedQueue((0 until player.mediaItemCount).map { player.getMediaItemAt(it).toTrack() },
             player.currentMediaItemIndex.coerceAtLeast(0), player.currentPosition.coerceAtLeast(0)))
     }

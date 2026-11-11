@@ -4,7 +4,7 @@ In **Library**, tap **Backup and restore** (the restore-clock icon).
 
 ## Export
 
-Choose **Export library** and select a destination through Android's document picker. Save outside Sonora's private app storage so the file survives uninstalling. A backup contains favorites, titles/artists/artwork references, playlists with order (including empty playlists), and listening timestamps/counts. It does not contain audio, Google credentials, expiring stream URLs or the playback queue. The JSON is readable and unencrypted; choose a destination appropriate for your listening history. Sonora uploads nothing itself; selecting a cloud document provider gives that provider the file.
+Choose **Export library** and select a destination through Android's document picker. Save outside Sonora's private app storage so the file survives uninstalling. A backup contains favorites, titles/artists/artwork references, playlists with order (including empty playlists), listening timestamps/counts, podcast subscriptions and episode progress. It does not contain audio, Google credentials, expiring stream URLs or the playback queue. The JSON is readable and unencrypted; choose a destination appropriate for your listening history. Sonora uploads nothing itself; selecting a cloud document provider gives that provider the file.
 
 ## Restore
 
@@ -14,10 +14,12 @@ Choose **Choose Sonora backup**. Sonora validates the entire file and shows coun
 - The latest listening timestamp and greatest play count are retained, so repeated restores do not multiply history counts.
 - Playlists match by stable source/local ID. Existing names and order stay; missing entries are appended. A fresh install restores original backup order and names, including empty lists.
 - Restore is one Room transaction; failure rolls back partial writes.
-- Exported backup format version 1 supports up to 32 MiB, 50,000 tracks, 2,000 playlists and 100,000 playlist entries. Unsupported versions, duplicate records, noncanonical source URLs and dangling references are rejected.
+- Exported backup format version 2 supports up to 32 MiB, 50,000 tracks, 2,000 playlists and 100,000 playlist entries. Unsupported versions, duplicate records, noncanonical source URLs and dangling references are rejected.
 - Restoration does not start playback or fetch song metadata. Thumbnails may be requested when subsequently displayed.
 
-The file has `format: "sonora-library"`, `version: 1`, `createdAt`, `tracks` and `playlists`. YouTube Takeout CSV/ZIP imports use the separate **Import music** screen.
+Version 1 music backups remain readable. Version 2 adds `podcasts` (up to 2,000 subscriptions) and `podcastProgress` (up to 50,000 episode positions). Existing subscriptions are retained and newer local episode progress wins. Enclosure audio URLs and cached episode catalogs are never exported; open a restored podcast to fetch its current catalog. Sonora 0.2 cannot read version 2 backups.
+
+The file has `format: "sonora-library"`, `version: 2`, `createdAt`, `tracks` and `playlists`. YouTube Takeout CSV/ZIP imports use the separate **Import music** screen.
 
 ## Upgrading from older debug builds
 

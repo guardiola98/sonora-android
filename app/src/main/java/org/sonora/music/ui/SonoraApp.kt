@@ -77,7 +77,7 @@ import org.sonora.music.playback.PlayerSnapshot
             FullPlayer(player, playerError, favoriteIds.contains(player.current!!.url),
                 onClose = { showPlayer = false }, onFavorite = { vm.favorite(player.current!!) },
                 onToggle = vm.playback::toggle, onNext = vm.playback::next, onPrevious = vm.playback::previous,
-                onSeek = vm.playback::seek, onQueue = { showQueue = true }, onRetry = vm.playback::retry)
+                onSeek = vm.playback::seek, onSpeed = vm.playback::speed, onQueue = { showQueue = true }, onRetry = vm.playback::retry)
         } else {
             Scaffold(containerColor = Color.Transparent, snackbarHost = { SnackbarHost(snackbar) },
                 topBar = { TopAppBar(title = {
@@ -92,7 +92,7 @@ import org.sonora.music.playback.PlayerSnapshot
                         playerError?.let { ErrorBanner(it, vm.playback::retry, player.current != null) }
                         player.current?.let { MiniPlayer(player, { showPlayer = true }, vm.playback::toggle, vm.playback::next) }
                         NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
-                            listOf("Home" to Icons.Rounded.Home, "Search" to Icons.Rounded.Search, "Library" to Icons.Rounded.LibraryMusic)
+                            listOf("Home" to Icons.Rounded.Home, "Search" to Icons.Rounded.Search, "Library" to Icons.Rounded.LibraryMusic, "Podcasts" to Icons.Rounded.Podcasts)
                                 .forEachIndexed { i, (label, icon) ->
                                     NavigationBarItem(selected = tab == i, onClick = { tab = i; showImport = false; showBackup = false }, icon = { Icon(icon, label) }, label = { Text(label) })
                                 }
@@ -107,6 +107,7 @@ import org.sonora.music.playback.PlayerSnapshot
                             0 -> HomeScreen(favorites.map { it.track() }, history.map { it.track() }, favoriteIds, player, onSearch,
                                 onPlay = vm.playback::play, onFavorite = vm::favorite, onEnqueue = vm::enqueue, onLibrary = { tab = 2 })
                             1 -> SearchScreen(search, favoriteIds, player.connected, onSearch, vm.playback::play, vm::favorite, vm::enqueue)
+                            3 -> PodcastScreen(vm, player.connected, favoriteIds)
                             else -> LibraryScreen(vm, favorites.map { it.track() }, history.map { it.track() }, favoriteIds, player.connected,
                                 { tab = 1 }, playlists, playlists.firstOrNull { it.playlist.id == selectedPlaylist },
                                 playlistTracks.second.takeIf { playlistTracks.first == selectedPlaylist }.orEmpty().map { it.track() },
@@ -285,7 +286,7 @@ import org.sonora.music.playback.PlayerSnapshot
 }
 
 @Composable private fun FullPlayer(player: PlayerSnapshot, error: String?, favorite: Boolean, onClose: () -> Unit, onFavorite: () -> Unit,
-    onToggle: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onSeek: (Long) -> Unit, onQueue: () -> Unit, onRetry: () -> Unit) {
+    onToggle: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onSeek: (Long) -> Unit, onSpeed: (Float) -> Unit, onQueue: () -> Unit, onRetry: () -> Unit) {
     val track = player.current ?: return
     val addToPlaylist = LocalAddToPlaylist.current
     var drag by remember(track.url) { mutableStateOf<Float?>(null) }
@@ -323,6 +324,21 @@ import org.sonora.music.playback.PlayerSnapshot
                 FilledIconButton(onClick = onToggle, modifier = Modifier.size(80.dp)) { Icon(if (player.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (player.playing) "Pause" else "Play", Modifier.size(42.dp)) }
                 IconButton(onClick = onNext, enabled = player.index < player.queue.lastIndex, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipNext, "Next track", Modifier.size(36.dp)) }
             }
+            if (org.sonora.music.domain.PodcastLinks.isEpisode(track.url)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    OutlinedButton(onClick = { onSeek((player.positionMs - 15_000).coerceAtLeast(0)) }) { Text("−15 sec") }
+                    var speedMenu by remember { mutableStateOf(false) }
+                    Box {
+                        OutlinedButton(onClick = { speedMenu = true }) { Text("${player.speed}×") }
+                        DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
+                            listOf(0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
+                                DropdownMenuItem(text = { Text("${speed}×") }, onClick = { onSpeed(speed); speedMenu = false })
+                            }
+                        }
+                    }
+                    OutlinedButton(onClick = { onSeek((player.positionMs + 30_000).coerceAtMost(player.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)) }) { Text("+30 sec") }
+                }
+            }
             if (player.buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
             error?.let { ErrorBanner(it, onRetry) }
             TextButton(onClick = onQueue, modifier = Modifier.align(Alignment.CenterHorizontally)) {
@@ -357,11 +373,11 @@ import org.sonora.music.playback.PlayerSnapshot
 }
 @Composable private fun AboutDialog(onDismiss: () -> Unit) {
     val uri = LocalUriHandler.current
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora 0.2 beta 1") },
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora 0.3 beta 1") },
         text = { Column {
-            Text("An independent, open-source music player. Built with NewPipeExtractor and Android Media3. Not affiliated with YouTube or Google.")
+            Text("An independent, open-source music and podcast player. Built with NewPipeExtractor and Android Media3. Not affiliated with YouTube or Google.")
             Spacer(Modifier.height(12.dp))
-            Text("GPL-3.0-or-later. No accounts, ads or analytics. Favorites and history stay on this device. Streaming sends requests to YouTube and image hosts.")
+            Text("GPL-3.0-or-later. No accounts, ads or analytics. Favorites and history stay on this device. Streaming sends requests to YouTube, podcast publishers and image hosts. Podcast search uses Apple’s public directory.")
             TextButton(onClick = { uri.openUri("https://github.com/guardiola98/sonora-android") }) { Text("Source code & licenses") }
         } }, confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })
 }

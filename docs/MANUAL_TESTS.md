@@ -75,3 +75,17 @@ Attach only redacted logs when reporting failures. Audible output, physical head
 - [ ] Drag first/middle/last rows, scroll through a long list while dragging, cancel a drag, rotate and use TalkBack move up/down actions. Saved order must match the UI after reopening.
 - [ ] Pause and seek, force-stop the process, reopen offline: queue/index/position return without autoplay. Clear the queue, kill/reopen and confirm it stays empty. Reboot and repeat.
 - [ ] Repeat actual streaming, background notification and lock-screen checks on the signed release APK, not only debug.
+
+
+## Podcasts (0.3 beta)
+
+- Upgrade the signed 0.2 APK in place to 0.3; check favorites, playlist order and queue remain.
+- Open Podcasts, search a known show, open it, subscribe and relaunch. Paste a public HTTPS RSS URL through Add RSS feed.
+- Load a podcast, switch to airplane mode and reopen it: saved episodes remain visible and a useful network error appears. Restore networking and Refresh episodes.
+- Play a real episode. Verify audible output, background/lock-screen notification controls, headset removal, Bluetooth and interruption by a phone call.
+- Open the full player, try −15/+30 seconds, seek and 0.75/1/1.25/1.5/2× speed. Switch to a song and confirm speed resets to 1×.
+- Pause after a minute, play something else, then Resume the episode. Force-stop and relaunch: queue and position return paused.
+- Queue songs and episodes together; next, previous, remove and clear work. Mark played removes the currently selected episode before updating progress; mark unplayed resets its position.
+- Favorite an episode and add it to a playlist. Export a backup, restore on another installation, check favorites/subscriptions/progress and load a subscribed feed.
+- Unsubscribe and check other library data remains. Try malformed XML, an HTML URL, HTTP-only audio, a removed episode and a feed over 16 MiB; no crashes or false success.
+- Check small/large screens, rotation, TalkBack labels and large font sizes. No audio files are downloaded for offline use.

@@ -1,40 +1,43 @@
-# Sonora — Android music player
+# Sonora — Android music and podcast player
 
 [![Android beta](https://github.com/guardiola98/sonora-android/actions/workflows/android.yml/badge.svg)](https://github.com/guardiola98/sonora-android/actions/workflows/android.yml)
 
-An independent, open-source music player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. No account, API key, ads or analytics.
+An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account, API key, ads or analytics.
 
-**Version: 0.2.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
+**Version: 0.3.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
 <p>
   <img src="docs/screenshots/home.png" width="220" alt="Sonora home on Android 15" />
   <img src="docs/screenshots/search.png" width="220" alt="Sonora search on Android 15" />
   <img src="docs/screenshots/import-preview.png" width="220" alt="Sonora import preview with labeled test fixtures" />
   <img src="docs/screenshots/playlist-editor.png" width="220" alt="Sonora 0.2 playlist editor after dragging test songs" />
+  <img src="docs/screenshots/podcast-episodes.png" width="220" alt="Sonora 0.3 podcast subscriptions and real RSS episodes" />
 </p>
 
-Actual emulator screenshots: Home/Search from 0.1-beta01, the import preview from 0.1-beta02 and the playlist editor from 0.2-beta01. No demo tracks are seeded; the import preview uses explicitly labeled test fixtures.
+Actual emulator screenshots: Home/Search from 0.1-beta01, the import preview from 0.1-beta02 and the playlist editor from 0.2-beta01, and the podcast screen from 0.3-beta01. No demo tracks are seeded; the import preview uses explicitly labeled test fixtures.
 
 ## Install
 
-Download the [signed Sonora 0.2 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.2.0-beta01/sonora-0.2.0-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
+Download the [signed Sonora 0.3 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.3.0-beta01/sonora-0.3.0-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
 
 This release uses a **persistent signing key**. Future releases using this key can update it without uninstalling or clearing the library. Earlier **debug** builds can have different certificates and cannot necessarily be upgraded in place. Do not uninstall an older build with data you need unless you have a usable backup. A new signing key cannot grant access to another application's private data. See [release signing and upgrade notes](docs/RELEASING.md).
 
 Android may ask you to allow installation from the app opening the APK. Search for a song or use **Library → Import music** for YouTube Music playlists/likes. Use **Library → Backup and restore** to save a copy outside the app before changing phones or uninstalling.
 
-GitHub Actions also builds a `sonora-0.2.0-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
+GitHub Actions also builds a `sonora-0.3.0-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
 
 ## Features
 
 - Dark Material 3 interface with original Sonora colors and icon, large artwork and subtle screen transitions.
+- Podcasts: search Apple’s public directory or paste a public HTTPS RSS feed; subscribe/unsubscribe, refresh episodes, and browse previously loaded descriptions offline.
+- Resume episodes from saved positions, mark played/unplayed, seek −15/+30 seconds and choose 0.75–2× speed. Podcast episodes share the queue, favorites, playlists and background player.
 - Real YouTube search: thumbnail, title, uploader/artist and duration. No seeded/demo catalog.
 - Audio playback, pause, previous/restart, next and seeking.
-- Persistent mini-player across Home, Search and Library.
+- Persistent mini-player across Home, Search, Library and Podcasts.
 - `MediaSessionService` with automatic media notification, lock-screen controls, audio focus and headphone-disconnect handling.
 - Queue: play a list, append, jump, remove, move up and clear; restore the list, selected song and last saved position after process death/reboot, paused until you press Play.
 - Create and rename local playlists, add/remove songs, drag handles to reorder with edge scrolling, and accessible move up/down menu actions. Imported playlists can be edited too.
-- Export a versioned Sonora JSON backup of favorites, all history and playlists (including empty ones); preview and merge backups atomically without deleting existing data.
+- Export a versioned Sonora JSON backup of favorites, all history, playlists (including empty ones), podcast subscriptions and episode progress; preview and merge backups atomically without deleting existing data.
 - Room favorites, listening history and imported playlists; history starts only when the player reports playback.
 - Import public/unlisted YouTube Music playlist links, including subsequent pages.
 - Import Takeout ZIP/CSV playlists, library songs and exported likes, with a preview and per-list Playlist/Favorites choices. Reimports merge without duplicating entries or removing existing likes.
@@ -61,7 +64,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 The wrapper uses Gradle 8.13 with a pinned distribution SHA-256. Dependency versions are pinned in [`gradle/libs.versions.toml`](gradle/libs.versions.toml). See [dependency decisions and official references](docs/DEPENDENCIES.md).
 
-Unit tests cover persistent Room data, v1→v2→v3 migrations, backup validation/round trips/rollback, playlist editing, queue checkpoints, CSV/ZIP parsing and size bounds, atomic imports, deduplication, independent favorites/history updates, history clearing, stale search cancellation, error/retry behavior and stream cache expiry/invalidation/concurrency. Live source tests are skipped by default so public CI is deterministic.
+Unit tests cover persistent Room data, v1→v2→v3→v4 migrations, backup validation/round trips/rollback, playlist editing, queue checkpoints, CSV/ZIP parsing and size bounds, atomic imports, deduplication, independent favorites/history updates, history clearing, stale search cancellation, error/retry behavior and stream cache expiry/invalidation/concurrency. Live source tests are skipped by default so public CI is deterministic.
 
 ```bash
 # Opt-in: real search, extraction and an HTTP audio-byte probe (not an audio playback test)
@@ -72,6 +75,9 @@ SONORA_LIVE_IMPORT=true ./gradlew testDebugUnitTest --tests '*LiveImportTest'
 
 # With a connected phone or emulator: real decoder/session/queue/background test
 ./gradlew connectedDebugAndroidTest
+
+# Opt-in: real podcast discovery, RSS playback, resume and background behavior
+./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.livePodcasts=true
 
 # Also require successful playback of a real extracted YouTube stream
 ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.liveYouTube=true
@@ -86,19 +92,22 @@ Compose screens → MusicViewModel → SearchPresenter → MusicSource
                             │                           └── NewPipeMusicSource → external NewPipeExtractor
                             ├── ImportPresenter → ImportRepository → LibraryImportSource
                             │                  └── TakeoutParser      └── NewPipeMusicSource
+                            ├── PodcastPresenter → PodcastSource → RssPodcastSource / PodcastFeedParser
                             ├── BackupCodec → Room library snapshot / merge
-                            ├── Room LibraryDao (schema v3, explicit v1/v2 migrations)
+                            ├── Room LibraryDao (schema v4, explicit migrations from v1–v3)
                             └── MediaController → PlaybackService / MediaSession → ExoPlayer
                                                                          └── StreamResolver → MusicSource
 ```
 
-- `domain/` contains stable track metadata and the `MusicSource` / `LibraryImportSource` interfaces, with no UI/player dependency.
+- `domain/` contains stable track metadata and the `MusicSource` / `LibraryImportSource` / `PodcastSource` interfaces, with no UI/player dependency.
 - `data/` owns the OkHttp transport adapter, external extractor integration, short-lived stream cache and Room database.
 - `playback/` owns ExoPlayer, the session/service and controller state. The service is the single playback owner.
 - `ui/` contains Compose screens, the MVVM presentation layer and lifecycle-aware StateFlow collection.
 - A small application graph supplies dependencies; no global Activity or player references are retained by the UI.
 
-Stream URLs are resolved lazily on ExoPlayer's loader path, on an IO dispatcher. They are never persisted in Room or passed to the screens. Signed URL expiry triggers a bounded retry, with a manual retry if the source still fails. Favorites, history, playlists and persisted queue contain canonical source URLs and metadata only. File parsing is independent of networking and playback; importing does not start playback or create listening-history entries. Import and backup restore transactions either complete or roll back. A process-wide queue writer serializes checkpoints and outlives service teardown; position-only updates avoid rewriting the queue JSON. Core library NIO desugaring supports NewPipeExtractor on API 26–32.
+Stream URLs are resolved lazily on ExoPlayer's loader path, on an IO dispatcher. They are never persisted in Room or passed to the screens. Signed URL expiry triggers a bounded retry, with a manual retry if the source still fails. Favorites, history, playlists and persisted queue contain canonical source references and metadata only (podcasts use the feed URL and a hash of the publisher’s episode GUID). File parsing is independent of networking and playback; importing does not start playback or create listening-history entries. Import and backup restore transactions either complete or roll back. A process-wide queue writer serializes checkpoints and outlives service teardown; position-only updates avoid rewriting the queue JSON. Core library NIO desugaring supports NewPipeExtractor on API 26–32.
+
+Podcast formats, privacy, limits and manual checks: [PODCASTS.md](docs/PODCASTS.md).
 
 ## Beta scope
 

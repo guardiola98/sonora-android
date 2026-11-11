@@ -103,12 +103,18 @@ abstract class LibraryDao {
     protected abstract suspend fun backupTracks(): List<LibraryTrack>
     @Query("SELECT * FROM playlists ORDER BY id") protected abstract suspend fun allPlaylists(): List<SavedPlaylist>
     @Transaction open suspend fun exportBackup(): LibraryBackup {
-        val tracks = backupTracks().filter { YouTubeLinks.track(it.url) == it.url }
+        val tracks = backupTracks().filter { isPersistentTrack(it.url) }
         val urls = tracks.map { it.url }.toSet()
         return LibraryBackup(System.currentTimeMillis(), tracks, allPlaylists().map { list ->
             BackupPlaylist(list.sourceKey, list.name, entries(list.id).map { it.trackUrl }.filter { it in urls })
-        })
+        }, backupPodcasts(), backupProgress())
     }
+    @Query("SELECT * FROM podcast_feeds WHERE subscribed = 1") protected abstract suspend fun backupPodcasts(): List<SavedPodcast>
+    @Query("SELECT * FROM podcast_progress") protected abstract suspend fun backupProgress(): List<PodcastProgress>
+    @Query("SELECT * FROM podcast_feeds WHERE feedUrl = :url") protected abstract suspend fun podcast(url: String): SavedPodcast?
+    @Query("SELECT * FROM podcast_progress WHERE reference = :url") protected abstract suspend fun progress(url: String): PodcastProgress?
+    @Upsert protected abstract suspend fun restorePodcast(show: SavedPodcast)
+    @Upsert protected abstract suspend fun restoreProgress(progress: PodcastProgress)
     @Transaction open suspend fun restoreBackup(backup: LibraryBackup): RestoreSummary {
         var tracks = 0; var favorites = 0
         for (record in backup.tracks) {
@@ -127,6 +133,11 @@ abstract class LibraryDao {
         val result = importCollections(backup.playlists.map { list ->
             ImportSelection(ImportCollection(list.key, list.name, list.tracks.map { byUrl.getValue(it).track() }), true, false)
         }, System.currentTimeMillis())
+        for (show in backup.podcasts) {
+            val old = podcast(show.feedUrl)
+            restorePodcast(old?.copy(subscribed = true) ?: show.copy(subscribed = true, refreshedAt = 0))
+        }
+        for (item in backup.progress) if ((progress(item.reference)?.updatedAt ?: -1) < item.updatedAt) restoreProgress(item)
         return RestoreSummary(tracks, favorites, result.newPlaylists, result.addedEntries)
     }
     @Query("SELECT * FROM playback_checkpoint WHERE id = 1") abstract suspend fun checkpoint(): PlaybackCheckpoint?
@@ -174,5 +185,5 @@ abstract class LibraryDao {
     }
 
 }
-@Database(entities = [LibraryTrack::class, SavedPlaylist::class, PlaylistEntry::class, PlaybackCheckpoint::class], version = 3, exportSchema = true)
-abstract class LibraryDatabase : RoomDatabase() { abstract fun library(): LibraryDao }
+@Database(entities = [LibraryTrack::class, SavedPlaylist::class, PlaylistEntry::class, PlaybackCheckpoint::class, SavedPodcast::class, SavedEpisode::class, PodcastProgress::class], version = 4, exportSchema = true)
+abstract class LibraryDatabase : RoomDatabase() { abstract fun library(): LibraryDao; abstract fun podcasts(): PodcastDao }

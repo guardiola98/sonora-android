@@ -27,7 +27,14 @@ object BackupCodec {
     fun encode(backup: LibraryBackup): String {
         require(backup.tracks.size <= MAX_TRACKS && backup.playlists.size <= 2_000 && backup.playlists.sumOf { it.tracks.size.toLong() } <= 100_000) { "Library exceeds supported backup limits." }
         return JSONObject().apply {
-        put("format", "sonora-library"); put("version", 1); put("createdAt", backup.createdAt)
+        put("format", "sonora-library"); put("version", 2); put("createdAt", backup.createdAt)
+        require(backup.podcasts.size <= 2_000 && backup.progress.size <= 50_000) { "Too many podcast records." }
+        put("podcasts", JSONArray().apply { backup.podcasts.forEach { show -> put(JSONObject().apply {
+            put("feedUrl", show.feedUrl); put("title", show.title); put("author", show.author); put("artwork", show.artwork); put("description", show.description)
+        }) } })
+        put("podcastProgress", JSONArray().apply { backup.progress.forEach { p -> put(JSONObject().apply {
+            put("reference", p.reference); put("positionMs", p.positionMs); put("durationMs", p.durationMs); put("completed", p.completed); put("updatedAt", p.updatedAt)
+        }) } })
         put("tracks", JSONArray().apply { backup.tracks.forEach { record -> put(trackJson(record.track()).apply {
             put("favorite", record.favorite); put("lastPlayedAt", record.lastPlayedAt ?: JSONObject.NULL); put("playCount", record.playCount)
         }) } })
@@ -52,7 +59,7 @@ object BackupCodec {
         }
         require(depth == 0 && !quoted) { "Incomplete backup." }
         val json = JSONObject(text)
-        require(json.getString("format") == "sonora-library" && json.getInt("version") == 1) { "Unsupported Sonora backup version." }
+        require(json.getString("format") == "sonora-library" && json.getInt("version") in 1..2) { "Unsupported Sonora backup version." }
         val data = json.getJSONArray("tracks")
         require(data.length() <= MAX_TRACKS) { "Backup exceeds 50,000 tracks." }
         val tracks = (0 until data.length()).map { i ->
@@ -77,7 +84,26 @@ object BackupCodec {
             BackupPlaylist(key, name, references)
         }
         require(playlists.map { it.key }.distinct().size == playlists.size) { "Duplicate playlists in backup." }
-        return LibraryBackup(json.getLong("createdAt"), tracks, playlists)
+        val shows = if (json.getInt("version") >= 2) json.getJSONArray("podcasts") else JSONArray()
+        val positions = if (json.getInt("version") >= 2) json.getJSONArray("podcastProgress") else JSONArray()
+        require(shows.length() <= 2_000 && positions.length() <= 50_000) { "Too many podcast records." }
+        val podcasts = (0 until shows.length()).map { index ->
+            val row = shows.getJSONObject(index)
+            val url = row.getString("feedUrl").also { require(PodcastLinks.https(it) == it) }
+            val title = row.getString("title").also { require(it.length <= 2000) }
+            val author = row.getString("author").also { require(it.length <= 2000) }
+            val description = row.getString("description").also { require(it.length <= 10000) }
+            SavedPodcast(url, title, author, PodcastLinks.https(row.optString("artwork")).orEmpty(), description, true)
+        }
+        val progress = (0 until positions.length()).map { index ->
+            val row = positions.getJSONObject(index)
+            val ref = row.getString("reference").also { require(PodcastLinks.isEpisode(it)) }
+            val position = row.getLong("positionMs").also { require(it in 0..604800000) }
+            val duration = row.getLong("durationMs").also { require(it in 0..604800000) }
+            PodcastProgress(ref, position, duration, row.getBoolean("completed"), row.getLong("updatedAt").also { require(it >= 0) })
+        }
+        require(podcasts.distinctBy { it.feedUrl }.size == podcasts.size && progress.distinctBy { it.reference }.size == progress.size) { "Duplicate podcast records." }
+        return LibraryBackup(json.getLong("createdAt"), tracks, playlists, podcasts, progress)
     }
     internal fun trackJson(track: Track) = JSONObject().apply {
         put("url", track.url); put("title", track.title); put("artist", track.artist)
@@ -85,13 +111,13 @@ object BackupCodec {
     }
     internal fun parseTrack(row: JSONObject): Track {
         val url = row.getString("url")
-        require(YouTubeLinks.track(url) == url) { "Backup contains a noncanonical YouTube track reference." }
+        require(isPersistentTrack(url)) { "Backup contains an unsupported track reference." }
         val title = row.getString("title").also { require(it.length <= 2_000) }
         val artist = row.getString("artist").also { require(it.length <= 2_000) }
         val duration = row.getLong("durationSeconds").also { require(it in 0..604_800) }
         val artwork = row.optString("artwork").takeIf { value ->
             runCatching { val uri = URI(value); uri.scheme == "https" && uri.userInfo == null && uri.port == -1 &&
-                (uri.host == "i.ytimg.com" || uri.host?.endsWith(".ytimg.com") == true || uri.host?.endsWith(".googleusercontent.com") == true || uri.host?.endsWith(".ggpht.com") == true)
+                ((PodcastLinks.isEpisode(url) && PodcastLinks.https(value) != null) || uri.host == "i.ytimg.com" || uri.host?.endsWith(".ytimg.com") == true || uri.host?.endsWith(".googleusercontent.com") == true || uri.host?.endsWith(".ggpht.com") == true)
             }.getOrDefault(false)
         }.orEmpty()
         return Track(url, title, artist, artwork, duration)

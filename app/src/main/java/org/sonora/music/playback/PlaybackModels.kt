@@ -32,3 +32,7 @@ fun MediaItem.toTrack() = Track(mediaId, mediaMetadata.title?.toString().orEmpty
     mediaMetadata.extras?.getLong("durationSeconds") ?: 0)
 
 const val MARK_PODCAST_PLAYED = "org.sonora.music.MARK_PODCAST_PLAYED"
+
+const val PLAY_RADIO = "org.sonora.music.PLAY_RADIO"
+const val RADIO_RETRY = "org.sonora.music.RADIO_RETRY"
+const val RADIO_HIDE = "org.sonora.music.RADIO_HIDE"

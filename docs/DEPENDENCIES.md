@@ -28,3 +28,7 @@ Newer stable branches exist (for example AGP 9.5.x, Media3 1.11.x, Room 2.8.5 an
 NewPipeExtractor transitively supplies jsoup, nanojson, protobuf-javalite, Rhino and JSR-305. Versions come from its published POM. JitPack is restricted to the two NewPipe groups, and no dynamic or snapshot dependency versions are used. No extractor source is copied or patched.
 
 The current command-line SDK tool emits a schema-version warning when used alongside AGP 8.13.2; installed API 36 and build-tools 35 are still recognized. This warning is not a reason to skip APK/test validation.
+
+## 0.5 discovery integration
+
+No new runtime dependency was added. The pinned extractor's public search filters, page/suggestion/related/playlist APIs were checked against its source and compiled signatures, then exercised in Android tests. Optional MusicBrainz and ListenBrainz use the existing OkHttp client; provider terms, attribution, pacing and actual metadata limits are documented in [DISCOVERY.md](DISCOVERY.md).

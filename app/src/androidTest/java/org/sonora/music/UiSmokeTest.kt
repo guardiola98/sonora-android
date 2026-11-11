@@ -58,7 +58,7 @@ class UiSmokeTest {
                 throw AssertionError("$expected screen did not appear")
             }
             capture("home")
-            navigate("Search", "Follow your curiosity")
+            navigate("Search", "Songs")
             capture("search")
             navigate("Library", "Your library")
             capture("library")

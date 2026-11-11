@@ -17,14 +17,44 @@ import kotlinx.coroutines.launch
 import org.sonora.music.SonoraApplication
 import org.sonora.music.domain.Track
 import org.sonora.music.playback.PlaybackConnection
+import org.sonora.music.discovery.*
 
 @UnstableApi
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
     private val graph = app.graph
     private val mutableMessage = MutableStateFlow<String?>(null)
-    val search = SearchPresenter(graph.source, viewModelScope)
+    val search = SearchPresenter(graph.source, viewModelScope, graph.searchRepository)
     val playback = PlaybackConnection(app, viewModelScope, graph.playbackStatus, graph.streams, graph.podcastLibrary, graph.preparation)
+    val homeDiscovery = HomeDiscoveryPresenter(graph.discovery, viewModelScope)
+    val collection = CollectionPresenter(graph.source, viewModelScope)
+    val discoveryOptions = graph.discoverySettings.state
+    val radio = graph.radioStatus.state
+    val searchHistory = graph.discoveryDao.searches().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val enrichedMetadata = graph.discoveryDao.metadata(System.currentTimeMillis()).map { rows -> rows.mapNotNull { row ->
+        runCatching { MetadataCodec.decode(row.payload) }.getOrNull() }.associateBy { it.reference } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    fun discoveryOptions(value: DiscoveryOptions) { graph.discoverySettings.update(value); homeDiscovery.invalidate() }
+    fun refreshHome(seed: Track?, force: Boolean = false) = homeDiscovery.refresh(seed, force)
+    fun resetPreferences() = viewModelScope.launch {
+        try { graph.discoverySettings.update(discoveryOptions.value.copy(resetAt = System.currentTimeMillis())); graph.discoveryDao.resetPreferences(); homeDiscovery.invalidate(); mutableMessage.value = "Learned preferences and hidden tracks reset. Your library is kept." }
+        catch (e: CancellationException) { throw e } catch (_: Exception) { mutableMessage.value = "Could not reset preferences." }
+    }
+    fun clearSearches() = viewModelScope.launch { graph.discoveryDao.clearSearches() }
+    fun notInterested(track: Track) = viewModelScope.launch {
+        try { graph.discoveryDao.feedback(track.url, "hide"); playback.hideFromRadio(track); homeDiscovery.refresh(homeDiscovery.state.value.seed, true); mutableMessage.value = "Hidden from recommendations. Reset preferences to undo." }
+        catch (e: CancellationException) { throw e } catch (_: Exception) { mutableMessage.value = "Could not save this preference." }
+    }
+    fun moreLike(track: Track) = viewModelScope.launch {
+        try { graph.discoveryDao.feedback(track.url, "more"); playback.retryRadio(); homeDiscovery.refresh(track, true); mutableMessage.value = "Preference saved. Updating recommendations." }
+        catch (e: CancellationException) { throw e } catch (_: Exception) { mutableMessage.value = "Could not save this preference." }
+    }
+    fun removeQueue(index: Int) { playback.state.value.queue.getOrNull(index)?.let { graph.feedback(it, "remove") }; playback.remove(index) }
+    fun saveCollection() = viewModelScope.launch {
+        val current = collection.state.value
+        try { if (current.tracks.isNotEmpty()) { graph.library.createPlaylistWithTracks(current.entry?.title ?: "Saved collection", current.tracks); mutableMessage.value = "Saved ${current.tracks.size} loaded tracks as a playlist" } }
+        catch (e: CancellationException) { throw e } catch (_: Exception) { mutableMessage.value = "Could not save this collection." }
+    }
     val preparationEnabled = graph.preparation.enabled
     fun setPreparationEnabled(enabled: Boolean) = graph.preparation.setEnabled(enabled)
     fun prepareBrowsing(tracks: List<Track>) = graph.preparation.browse(tracks.map { it.url })

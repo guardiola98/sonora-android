@@ -61,12 +61,19 @@ import org.sonora.music.playback.PlayerSnapshot
     val message by vm.message.collectAsStateWithLifecycle()
     val preparationEnabled by vm.preparationEnabled.collectAsStateWithLifecycle()
     val podcastState by vm.podcasts.state.collectAsStateWithLifecycle()
+    val discoveryOptions by vm.discoveryOptions.collectAsStateWithLifecycle()
+    val radio by vm.radio.collectAsStateWithLifecycle()
+    val homeDiscovery by vm.homeDiscovery.state.collectAsStateWithLifecycle()
+    val enrichedMetadata by vm.enrichedMetadata.collectAsStateWithLifecycle()
+    val collectionState by vm.collection.state.collectAsStateWithLifecycle()
+    var showDiscoverySettings by rememberSaveable { mutableStateOf(false) }
+    var explainedTrack by remember { mutableStateOf<Track?>(null) }
     val favoriteIds = remember(favorites) { favorites.map { it.url }.toSet() }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showPlayer by rememberSaveable { mutableStateOf(false) }
     var showQueue by rememberSaveable { mutableStateOf(false) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
-    val candidates = if (showPlayer || showImport || showBackup || !preparationEnabled) emptyList() else when (tab) {
+    val candidates = if (showPlayer || showImport || showBackup || !preparationEnabled) emptyList() else if (collectionState.entry != null) collectionState.tracks.take(2) else when (tab) {
         0 -> (history.ifEmpty { favorites }).take(2).map { it.track() }
         1 -> search.tracks.take(2)
         2 -> (if (selectedPlaylist == null) favorites else playlistTracks.second).take(2).map { it.track() }
@@ -85,7 +92,10 @@ import org.sonora.music.playback.PlayerSnapshot
     BackHandler(tab == 2 && selectedPlaylist != null && !showImport && !showBackup && !showPlayer) { vm.selectPlaylist(null) }
     BackHandler(showPlayer) { showPlayer = false }
     val onSearch: (String) -> Unit = { tab = 1; vm.search.search(it) }
-    CompositionLocalProvider(LocalAddToPlaylist provides { track -> addTrack = track }) {
+    CompositionLocalProvider(LocalAddToPlaylist provides { track -> addTrack = track },
+        LocalDiscoveryActions provides DiscoveryActions(radio = { vm.playback.playSingle(it, true) }, hide = { vm.notInterested(it) },
+            more = { vm.moreLike(it) }, explain = { explainedTrack = it }, autoplay = discoveryOptions.autoplay,
+            setAutoplay = { vm.discoveryOptions(discoveryOptions.copy(autoplay = it)) }, radioState = radio)) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         if (showPlayer && player.current != null) {
             FullPlayer(player, playerError, favoriteIds.contains(player.current!!.url),
@@ -118,9 +128,8 @@ import org.sonora.music.playback.PlayerSnapshot
                     else if (showImport) ImportScreen(vm, importState, onClose = { showImport = false; tab = 2 })
                     else AnimatedContent(tab, label = "screen", modifier = Modifier.widthIn(max = 840.dp).fillMaxSize()) { selected ->
                         when (selected) {
-                            0 -> HomeScreen(favorites.map { it.track() }, history.map { it.track() }, favoriteIds, player, onSearch,
-                                onPlay = vm.playback::play, onFavorite = vm::favorite, onEnqueue = vm::enqueue, onLibrary = { tab = 2 })
-                            1 -> SearchScreen(search, favoriteIds, player.connected, onSearch, vm.playback::play, vm::favorite, vm::enqueue)
+                            0 -> DiscoveryHome(vm, player, onSearch, { tab = 2 }, { showPlayer = true }, { showDiscoverySettings = true })
+                            1 -> DiscoverySearch(vm, search, favoriteIds, player.connected, onSearch)
                             3 -> PodcastScreen(vm, player.connected, favoriteIds)
                             else -> LibraryScreen(vm, favorites.map { it.track() }, history.map { it.track() }, favoriteIds, player.connected,
                                 { tab = 1 }, playlists, playlists.firstOrNull { it.playlist.id == selectedPlaylist },
@@ -140,6 +149,9 @@ import org.sonora.music.playback.PlayerSnapshot
                     }
                     TextButton(onClick = { vm.playback.clear(); showQueue = false }, enabled = player.queue.isNotEmpty()) { Text("Clear queue") }
                 }
+                AutoplayControl()
+                if (!radio.active) Text("Manual queue: no automatic tracks will be added.", Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodySmall)
+                radio.notice?.let { Text(it, Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodySmall); TextButton(onClick = vm.playback::retryRadio) { Text("Retry radio") } }
                 LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                     if (player.queue.isEmpty()) item { EmptyState(Icons.AutoMirrored.Rounded.QueueMusic, "Your queue is empty", "Add a track from search or your library.") }
                     itemsIndexed(player.queue, key = { i, t -> "$i:${t.url}" }) { i, track ->
@@ -149,101 +161,23 @@ import org.sonora.music.playback.PlayerSnapshot
                             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                                 Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(track.artist, maxLines = 1, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                radio.automatic[track.url]?.let { Text("Radio · $it", maxLines = 2, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) }
                             }
                             IconButton(onClick = { vm.playback.moveUp(i) }, enabled = i > 0) { Icon(Icons.Rounded.ArrowUpward, "Move ${track.title} up") }
-                            IconButton(onClick = { vm.playback.remove(i) }) { Icon(Icons.Rounded.Close, "Remove ${track.title} from queue") }
+                            IconButton(onClick = { vm.removeQueue(i) }) { Icon(Icons.Rounded.Close, "Remove ${track.title} from queue") }
                         }
                     }
                 }
             }
         }
-        if (showAbout) AboutDialog(preparationEnabled, vm::setPreparationEnabled) { showAbout = false }
+        if (showAbout) AboutDialog(preparationEnabled, vm::setPreparationEnabled, { showAbout = false; showDiscoverySettings = true }) { showAbout = false }
+        if (showDiscoverySettings) DiscoverySettingsDialog(vm) { showDiscoverySettings = false }
+        if (collectionState.entry != null) DiscoveryCollection(vm, collectionState, favoriteIds, player.connected)
+        explainedTrack?.let { track -> RecommendationDetails(track, homeDiscovery.recommendations.firstOrNull { it.track.url == track.url }, enrichedMetadata[track.url], radio.automatic[track.url]) { explainedTrack = null } }
         addTrack?.let { track -> AddToPlaylistDialog(track, playlists, { addTrack = null },
             { id -> vm.addToPlaylist(id, track) { addTrack = null } },
             { name -> vm.createPlaylist(name, track) { addTrack = null } }) }
     }
-    }
-}
-
-@Composable private fun HomeScreen(favorites: List<Track>, history: List<Track>, favoriteIds: Set<String>, player: PlayerSnapshot,
-    onSearch: (String) -> Unit, onPlay: (List<Track>, Int) -> Unit, onFavorite: (Track) -> Unit, onEnqueue: (Track) -> Unit, onLibrary: () -> Unit) {
-    LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item {
-            Column(Modifier.padding(horizontal = 24.dp)) {
-                Text("YOUR MUSIC, YOUR MOMENT", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                Spacer(Modifier.height(10.dp))
-                Text("A little more\nsound in your day.", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(20.dp))
-                Surface(onClick = { onSearch("") }, shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                    Row(Modifier.fillMaxWidth().padding(22.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Find your next favorite", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                            Spacer(Modifier.height(6.dp))
-                            Text("Search songs, artists and live sessions", color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                        Icon(Icons.Rounded.Search, null, Modifier.size(32.dp))
-                    }
-                }
-            }
-        }
-        item { SectionTitle("Set the mood") }
-        item {
-            LazyRow(contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(listOf("Slow mornings" to "acoustic chill music", "Deep focus" to "instrumental focus music", "After hours" to "jazz late night", "Fresh energy" to "upbeat indie music")) { (label, query) ->
-                    SuggestionChip(onClick = { onSearch(query) }, label = { Text(label) })
-                }
-            }
-        }
-        item { SectionTitle("On repeat", if (favorites.isNotEmpty()) "See library" else null, onLibrary) }
-        if (favorites.isEmpty()) item { EmptyState(Icons.Rounded.FavoriteBorder, "Make it yours", "Tap the heart on a track to keep it in your library.") }
-        else item {
-            LazyRow(contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                itemsIndexed(favorites.take(12), key = { _, t -> t.url }) { i, track ->
-                    Column(Modifier.width(156.dp).clickable(enabled = player.connected) { onPlay(favorites, i) }) {
-                        Artwork(track, Modifier.size(156.dp), large = true)
-                        Spacer(Modifier.height(10.dp))
-                        Text(track.title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
-                        Text(track.artist, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
-        if (history.isNotEmpty()) {
-            item { SectionTitle("Recently played") }
-            itemsIndexed(history.take(8), key = { _, t -> t.url }) { i, track ->
-                TrackRow(track, track.url in favoriteIds, player.connected, { onPlay(history, i) }, { onFavorite(track) }, { onEnqueue(track) })
-            }
-        }
-        item { Text("SONORA · BETA 0.1", Modifier.padding(24.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline) }
-    }
-}
-
-@Composable private fun SearchScreen(state: SearchState, favoriteIds: Set<String>, connected: Boolean,
-    onSearch: (String) -> Unit, onPlay: (List<Track>, Int) -> Unit, onFavorite: (Track) -> Unit, onEnqueue: (Track) -> Unit) {
-    var query by rememberSaveable { mutableStateOf(state.query) }
-    LaunchedEffect(state.query) { query = state.query }
-    val keyboard = LocalSoftwareKeyboardController.current
-    val submit = { keyboard?.hide(); onSearch(query) }
-    Column {
-        Text("Search", Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
-            placeholder = { Text("Songs, artists, something new…") }, singleLine = true, shape = RoundedCornerShape(18.dp),
-            leadingIcon = { Icon(Icons.Rounded.Search, null) },
-            trailingIcon = { IconButton(onClick = submit, enabled = query.isNotBlank()) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Search music") } },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { submit() }))
-        if (state.loading) {
-            LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 24.dp))
-            Text("Searching the source…", Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        state.error?.let { ErrorBanner(it, { onSearch(state.query) }) }
-        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
-            if (!state.searched && !state.loading) item { EmptyState(Icons.Rounded.TravelExplore, "Follow your curiosity", "Search public YouTube tracks. No account needed.") }
-            if (state.searched && state.error == null && state.tracks.isEmpty()) item { EmptyState(Icons.Rounded.SearchOff, "No tracks found", "Try a different title or artist.") }
-            if (state.tracks.isNotEmpty()) item { Text("${state.tracks.size} results", Modifier.padding(24.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            itemsIndexed(state.tracks, key = { _, t -> t.url }) { i, track ->
-                TrackRow(track, track.url in favoriteIds, connected, { onPlay(state.tracks, i) }, { onFavorite(track) }, { onEnqueue(track) })
-            }
-        }
     }
 }
 
@@ -264,6 +198,7 @@ import org.sonora.music.playback.PlayerSnapshot
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, "Options for ${track.title}") }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DiscoveryTrackMenu(track) { menu = false }
                 DropdownMenuItem(text = { Text("Add to playlist") }, onClick = { menu = false; addToPlaylist(track) })
                 DropdownMenuItem(text = { Text("Add to queue") }, enabled = connected, onClick = { menu = false; onEnqueue() })
                 onMoveUp?.let { action -> DropdownMenuItem(text = { Text("Move up") }, onClick = { menu = false; action() }) }
@@ -274,7 +209,7 @@ import org.sonora.music.playback.PlayerSnapshot
     }
 }
 
-@Composable private fun Artwork(track: Track, modifier: Modifier, large: Boolean = false) {
+@Composable fun Artwork(track: Track, modifier: Modifier, large: Boolean = false) {
     Box(modifier.clip(RoundedCornerShape(if (large) 24.dp else 12.dp)).background(Brush.linearGradient(listOf(Color(0xFF42325F), Color(0xFF223943)))), contentAlignment = Alignment.Center) {
         Icon(Icons.Rounded.MusicNote, null, Modifier.fillMaxSize(0.35f), tint = Color(0xFFC5B4FF))
         if (track.artwork.isNotBlank()) AsyncImage(track.artwork, "Artwork for ${track.title}", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -309,7 +244,7 @@ import org.sonora.music.playback.PlayerSnapshot
             IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Close player") }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("NOW PLAYING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                Text("Your queue", style = MaterialTheme.typography.titleSmall)
+                Text(if (LocalDiscoveryActions.current.radioState.active) "Sonora radio" else "Your queue", style = MaterialTheme.typography.titleSmall)
             }
             IconButton(onClick = onQueue) { Icon(Icons.AutoMirrored.Rounded.QueueMusic, "Open queue") }
         }
@@ -325,6 +260,11 @@ import org.sonora.music.playback.PlayerSnapshot
                 IconButton(onClick = onFavorite) { Icon(if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (favorite) "Remove from favorites" else "Add to favorites", tint = MaterialTheme.colorScheme.primary) }
             }
             TextButton(onClick = { addToPlaylist(track) }) { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null); Text("Add to playlist") }
+            if (!org.sonora.music.domain.PodcastLinks.isEpisode(track.url)) {
+                val actions = LocalDiscoveryActions.current
+                Row { TextButton(onClick = { actions.radio(track) }) { Text("Start radio") }; TextButton(onClick = { actions.explain(track) }) { Text("Music details") } }
+                AutoplayControl()
+            }
             Spacer(Modifier.height(20.dp))
             Slider(value = drag ?: player.positionMs.toFloat().coerceIn(0f, player.durationMs.coerceAtLeast(1).toFloat()),
                 onValueChange = { drag = it }, onValueChangeFinished = { drag?.let { onSeek(it.toLong()) }; drag = null },
@@ -362,7 +302,7 @@ import org.sonora.music.playback.PlayerSnapshot
     }
 }
 
-@Composable private fun ErrorBanner(message: String, retry: () -> Unit, canRetry: Boolean = true) {
+@Composable fun ErrorBanner(message: String, retry: () -> Unit, canRetry: Boolean = true) {
     Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(12.dp)) {
         Row(Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
@@ -385,9 +325,9 @@ import org.sonora.music.playback.PlayerSnapshot
         if (action != null) TextButton(onClick = onClick) { Text(action) }
     }
 }
-@Composable private fun AboutDialog(preparationEnabled: Boolean, onPreparationChanged: (Boolean) -> Unit, onDismiss: () -> Unit) {
+@Composable private fun AboutDialog(preparationEnabled: Boolean, onPreparationChanged: (Boolean) -> Unit, onDiscovery: () -> Unit, onDismiss: () -> Unit) {
     val uri = LocalUriHandler.current
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora 0.4 beta 1") },
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora 0.5 beta 1") },
         text = { Column(Modifier.verticalScroll(rememberScrollState())) {
             Text("An independent, open-source music and podcast player. Built with NewPipeExtractor and Android Media3. Not affiliated with YouTube or Google.")
             Spacer(Modifier.height(12.dp))
@@ -400,6 +340,7 @@ import org.sonora.music.playback.PlayerSnapshot
                 }
                 Switch(checked = preparationEnabled, onCheckedChange = onPreparationChanged)
             }
+            TextButton(onClick = onDiscovery) { Text("Discovery & autoplay settings") }
             TextButton(onClick = { uri.openUri("https://github.com/guardiola98/sonora-android") }) { Text("Source code & licenses") }
         } }, confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })
 }

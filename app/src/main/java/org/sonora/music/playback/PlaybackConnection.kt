@@ -68,6 +68,15 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
             controller?.apply { setMediaItems(tracks.map { it.toMediaItem() }, index, position); prepare(); play() }
         }
     }
+    fun playSingle(track: Track, forceRadio: Boolean = false) {
+        if (org.sonora.music.domain.PodcastLinks.isEpisode(track.url)) { play(listOf(track), 0); return }
+        playRequest++; preparation.prioritize(track.url)
+        controller?.sendCustomCommand(SessionCommand(PLAY_RADIO, Bundle.EMPTY), Bundle().apply {
+            putString("track", org.sonora.music.data.BackupCodec.trackJson(track).toString()); putBoolean("force", forceRadio)
+        })
+    }
+    fun retryRadio() { controller?.sendCustomCommand(SessionCommand(RADIO_RETRY, Bundle.EMPTY), Bundle.EMPTY) }
+    fun hideFromRadio(track: Track) { controller?.sendCustomCommand(SessionCommand(RADIO_HIDE, Bundle.EMPTY), Bundle().apply { putString("reference", track.url) }) }
     fun enqueue(track: Track) { controller?.apply { addMediaItem(track.toMediaItem()); if (playbackState == Player.STATE_IDLE) prepare() } }
     fun toggle() { controller?.let { if (it.isPlaying || it.playWhenReady && it.playbackState == Player.STATE_BUFFERING) it.pause() else retry() } }
     fun retry() {

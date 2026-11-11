@@ -33,6 +33,11 @@ data class PlaylistSummary(@Embedded val playlist: SavedPlaylist, val trackCount
 
 @Dao
 abstract class LibraryDao {
+    @Query("SELECT * FROM tracks WHERE url LIKE 'https://www.youtube.com/%' ORDER BY favorite DESC, lastPlayedAt DESC, playCount DESC LIMIT 5000")
+    abstract suspend fun discoveryTracks(): List<LibraryTrack>
+    @Query("SELECT * FROM tracks ORDER BY favorite DESC, lastPlayedAt DESC LIMIT 50000")
+    abstract suspend fun searchableTracks(): List<LibraryTrack>
+
     @Query("SELECT * FROM tracks WHERE favorite = 1 ORDER BY title COLLATE NOCASE")
     abstract fun favorites(): Flow<List<LibraryTrack>>
     @Query("SELECT * FROM tracks WHERE lastPlayedAt IS NOT NULL ORDER BY lastPlayedAt DESC LIMIT 200")
@@ -185,5 +190,5 @@ abstract class LibraryDao {
     }
 
 }
-@Database(entities = [LibraryTrack::class, SavedPlaylist::class, PlaylistEntry::class, PlaybackCheckpoint::class, SavedPodcast::class, SavedEpisode::class, PodcastProgress::class], version = 4, exportSchema = true)
-abstract class LibraryDatabase : RoomDatabase() { abstract fun library(): LibraryDao; abstract fun podcasts(): PodcastDao }
+@Database(entities = [LibraryTrack::class, SavedPlaylist::class, PlaylistEntry::class, PlaybackCheckpoint::class, SavedPodcast::class, SavedEpisode::class, PodcastProgress::class, SearchHistoryEntry::class, ListeningPreferenceRow::class, DiscoveryCacheRow::class], version = 5, exportSchema = true)
+abstract class LibraryDatabase : RoomDatabase() { abstract fun library(): LibraryDao; abstract fun podcasts(): PodcastDao; abstract fun discovery(): DiscoveryDao }

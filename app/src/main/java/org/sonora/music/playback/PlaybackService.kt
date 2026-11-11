@@ -25,6 +25,8 @@ import org.sonora.music.MainActivity
 import org.sonora.music.SonoraApplication
 import org.sonora.music.data.ExtractorDownloader
 import org.sonora.music.data.SavedQueue
+import org.sonora.music.discovery.*
+import kotlinx.coroutines.flow.collectLatest
 import org.sonora.music.domain.MusicSourceException
 import org.sonora.music.domain.PodcastLinks
 
@@ -40,6 +42,15 @@ class PlaybackService : MediaSessionService() {
     private var changedDuringRestore = false
     private var applyingRestore = false
     private var destroying = false
+    private lateinit var radio: RadioCoordinator
+    private val listening = ListeningTracker()
+    private var observedDuration = 0L
+    private var endedTrack: String? = null
+    private fun pulseListening() { if (!graph.discoverySettings.state.value.personalized) { listening.start(player.currentMediaItem?.toTrack(), android.os.SystemClock.elapsedRealtime()); return }; listening.tick(player.isPlaying, android.os.SystemClock.elapsedRealtime())?.let { graph.feedback(it.track, it.kind, it.listenedMs) } }
+    private fun finishListening(natural: Boolean, skipped: Boolean) {
+        pulseListening()
+        listening.finish(natural, skipped, observedDuration)?.let { graph.feedback(it.track, it.kind, it.listenedMs) }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -66,13 +77,23 @@ class PlaybackService : MediaSessionService() {
                         else saveQueue()
                     }
                 }
+                override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+                    if (::radio.isInitialized && !applyingRestore && !radio.editing && reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) radio.manual()
+                }
                 override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+                    if (reason == Player.DISCONTINUITY_REASON_SEEK && endedTrack != null && newPosition.mediaItem?.mediaId == endedTrack) {
+                        endedTrack = null; recorded = false
+                        listening.start(newPosition.mediaItem?.toTrack(), android.os.SystemClock.elapsedRealtime())
+                    }
                     val old = oldPosition.mediaItem ?: return
                     if (recorded && oldPosition.positionMs > 0) graph.podcastProgress.save(old.mediaId, oldPosition.positionMs,
                         old.toTrack().durationSeconds * 1000, reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION)
                 }
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                    refreshed = false; recorded = false
+                    finishListening(reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO, reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK)
+                    listening.start(mediaItem?.toTrack(), android.os.SystemClock.elapsedRealtime())
+                    observedDuration = (mediaItem?.toTrack()?.durationSeconds ?: 0) * 1000
+                    refreshed = false; recorded = false; endedTrack = null
                     if (!applyingRestore) graph.preparation.prioritize(mediaItem?.mediaId)
                     graph.playbackStatus.report(null)
                     if (mediaItem != null && !PodcastLinks.isEpisode(mediaItem.mediaId)) setPlaybackSpeed(1f)
@@ -88,10 +109,10 @@ class PlaybackService : MediaSessionService() {
                     }
                     recordIfPlaying()
                 }
-                override fun onIsPlayingChanged(isPlaying: Boolean) { recordIfPlaying() }
+                override fun onIsPlayingChanged(isPlaying: Boolean) { pulseListening(); recordIfPlaying() }
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_READY) graph.playbackStatus.report(null)
-                    if (playbackState == Player.STATE_ENDED) saveEpisodeProgress(completed = true)
+                    if (playbackState == Player.STATE_ENDED) { finishListening(true, false); endedTrack = currentMediaItem?.mediaId; saveEpisodeProgress(completed = true); if (::radio.isInitialized) radio.tick() }
                 }
                 override fun onPlayerError(error: PlaybackException) {
                     val causes = generateSequence<Throwable>(error) { it.cause }.toList()
@@ -116,6 +137,23 @@ class PlaybackService : MediaSessionService() {
                 }
             })
         }
+        radio = RadioCoordinator(graph.discovery, object : RadioQueue {
+            override fun tracks() = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toTrack() }
+            override fun index() = player.currentMediaItemIndex
+            override fun activePlayback() = (player.isPlaying || player.playWhenReady && player.playbackState == Player.STATE_ENDED) && player.playerError == null
+            override fun append(recommendations: List<Recommendation>) {
+                val ended = player.playbackState == Player.STATE_ENDED && player.playWhenReady
+                if (player.currentMediaItemIndex > 30) player.removeMediaItems(0, player.currentMediaItemIndex - 20)
+                player.addMediaItems(recommendations.map { it.track.toMediaItem() })
+                if (ended && player.hasNextMediaItem()) { player.seekToNextMediaItem(); player.prepare(); player.play() }
+                saveQueue()
+            }
+            override fun removeUpcoming(urls: Set<String>) {
+                for (index in player.mediaItemCount - 1 downTo (player.currentMediaItemIndex + 1).coerceAtLeast(0)) if (player.getMediaItemAt(index).mediaId in urls) player.removeMediaItem(index)
+                saveQueue()
+            }
+        }, scope, graph.radioStatus, { graph.discoverySettings.state.value.autoplay })
+        scope.launch { graph.discoverySettings.state.collectLatest { if (!it.autoplay) radio.disable() } }
         val activity = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         session = MediaSession.Builder(this, player).setSessionActivity(activity)
             .setCallback(object : MediaSession.Callback {
@@ -125,10 +163,32 @@ class PlaybackService : MediaSessionService() {
                     if (controller.packageName != packageName) return base
                     return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                         .setAvailablePlayerCommands(base.availablePlayerCommands)
-                        .setAvailableSessionCommands(base.availableSessionCommands.buildUpon().add(SessionCommand(MARK_PODCAST_PLAYED, Bundle.EMPTY)).build()).build()
+                        .setAvailableSessionCommands(base.availableSessionCommands.buildUpon().add(SessionCommand(MARK_PODCAST_PLAYED, Bundle.EMPTY)).add(SessionCommand(PLAY_RADIO, Bundle.EMPTY)).add(SessionCommand(RADIO_RETRY, Bundle.EMPTY)).add(SessionCommand(RADIO_HIDE, Bundle.EMPTY)).build()).build()
                 }
                 override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo,
                     customCommand: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
+                    if (customCommand.customAction in setOf(PLAY_RADIO, RADIO_RETRY, RADIO_HIDE)) {
+                        if (controller.packageName != packageName) return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
+                        try {
+                            when (customCommand.customAction) {
+                                PLAY_RADIO -> {
+                                    val track = org.sonora.music.data.BackupCodec.parseTrack(org.json.JSONObject(args.getString("track").orEmpty()))
+                                    require(!PodcastLinks.isEpisode(track.url))
+                                    if (args.getBoolean("force")) graph.discoverySettings.update(graph.discoverySettings.state.value.copy(autoplay = true))
+                                    radio.manual()
+                                    radio.replacing { player.setMediaItem(track.toMediaItem()); player.prepare(); player.play() }
+                                    radio.begin(track); radio.tick(); saveQueue()
+                                }
+                                RADIO_RETRY -> radio.retry()
+                                RADIO_HIDE -> {
+                                    val reference = args.getString("reference").orEmpty()
+                                    if (graph.radioStatus.state.value.active) radio.replacing { for (index in player.mediaItemCount - 1 downTo 0) if (player.getMediaItemAt(index).mediaId == reference) player.removeMediaItem(index) }
+                                    radio.retry(); saveQueue()
+                                }
+                            }
+                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                        } catch (_: Exception) { return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE)) }
+                    }
                     if (customCommand.customAction != MARK_PODCAST_PLAYED) return super.onCustomCommand(session, controller, customCommand, args)
                     val reference = args.getString("reference").orEmpty()
                     if (controller.packageName != packageName || !PodcastLinks.isEpisode(reference))
@@ -152,12 +212,15 @@ class PlaybackService : MediaSessionService() {
                 applyingRestore = true
                 player.setMediaItems(saved.tracks.map { it.toMediaItem() }, saved.index, saved.positionMs)
                 player.playWhenReady = false // Restoring never starts audio or contacts the source.
+                saved.radioSeed?.let { radio.begin(it, saved.automatic, saved.radioRecent) }
                 applyingRestore = false
             }
             loadingQueue = false
             saveQueue()
             while (isActive) {
                 delay(2_000)
+                pulseListening(); radio.tick()
+                if (player.duration > 0) observedDuration = player.duration
                 if (player.isPlaying) {
                     saveQueue()
                     val remaining = player.duration.takeIf { it > 0 }?.minus(player.currentPosition) ?: Long.MAX_VALUE
@@ -174,6 +237,7 @@ class PlaybackService : MediaSessionService() {
         if (!player.isPlaying || recorded) return
         val track = player.currentMediaItem?.toTrack() ?: return
         recorded = true
+        if (::radio.isInitialized) radio.played(track)
         scope.launch {
             try { graph.library.recordPlay(track, System.currentTimeMillis()) }
             catch (e: CancellationException) { throw e }
@@ -189,14 +253,17 @@ class PlaybackService : MediaSessionService() {
         if (loadingQueue) return
         saveEpisodeProgress()
         graph.queueStore.save(SavedQueue((0 until player.mediaItemCount).map { player.getMediaItemAt(it).toTrack() },
-            player.currentMediaItemIndex.coerceAtLeast(0), player.currentPosition.coerceAtLeast(0)))
+            player.currentMediaItemIndex.coerceAtLeast(0), player.currentPosition.coerceAtLeast(0),
+            graph.radioStatus.state.value.seed, graph.radioStatus.state.value.automatic, graph.radioStatus.state.value.recent))
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (!player.playWhenReady || player.mediaItemCount == 0 || player.playbackState == Player.STATE_ENDED) stopSelf()
     }
     override fun onDestroy() {
+        finishListening(false, false)
         saveQueue()
+        radio.close()
         destroying = true
         graph.preparation.prioritize(null)
         session?.release(); session = null

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "live",
+    "passed": 1,
+    "seconds": "29.033"
+  },
+  {
+    "name": "podcast",
+    "passed": 1,
+    "seconds": "21.459"
+  },
+  {
+    "name": "regression",
+    "passed": 5,
+    "seconds": "114.681"
+  },
+  {
+    "name": "ui",
+    "passed": 1,
+    "seconds": "4.011"
+  },
+  {
+    "name": "queue-seed",
+    "passed": 1,
+    "seconds": "1.528"
+  },
+  {
+    "name": "queue-verify",
+    "passed": 1,
+    "seconds": "1.76"
+  },
+  {
+    "name": "radio-seed",
+    "passed": 1,
+    "seconds": "0.116"
+  },
+  {
+    "name": "radio-verify",
+    "passed": 1,
+    "seconds": "1.701"
+  },
+  {
+    "name": "automatic-preparation",
+    "passed": 1,
+    "seconds": "5.778"
+  }
+]

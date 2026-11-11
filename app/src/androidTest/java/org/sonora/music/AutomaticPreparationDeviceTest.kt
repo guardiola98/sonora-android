@@ -53,10 +53,11 @@ class AutomaticPreparationDeviceTest {
                 while (!node.isClickable && node.parent != null) node = node.parent
                 assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
                 main { vm.search.search("Kevin MacLeod Carefree") }
-                await("Search failed", 60_000) { vm.search.state.value.tracks.isNotEmpty() }
+                await("Search failed", 60_000) { !vm.search.state.value.loading && vm.search.state.value.tracks.isNotEmpty() }
+                main {} // The local-first phase may be reranked when remote music results arrive.
                 val track = vm.search.state.value.tracks.first()
                 val before = runBlocking { app.graph.library.find(track.url)?.playCount ?: 0 }
-                await("Visible search track was not prepared", 60_000) { app.graph.audioPrefixes.hasOwner(track.url) }
+                await("Visible search track was not prepared: ${track.url}", 60_000) { app.graph.audioPrefixes.hasOwner(track.url) }
                 main { assertFalse(player.isPlaying); assertFalse(player.playWhenReady) }
                 assertEquals(before, runBlocking { app.graph.library.find(track.url)?.playCount ?: 0 })
                 val start = SystemClock.elapsedRealtime()

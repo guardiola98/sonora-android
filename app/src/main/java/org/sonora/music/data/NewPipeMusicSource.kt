@@ -12,10 +12,75 @@ import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import org.schabi.newpipe.extractor.stream.StreamType
 import org.sonora.music.domain.*
+import org.sonora.music.discovery.*
 import java.io.IOException
 import java.util.concurrent.CancellationException
 
-class NewPipeMusicSource : MusicSource, LibraryImportSource {
+class NewPipeMusicSource : MusicSource, LibraryImportSource, MusicCatalogSource {
+    private data class Continuation(val query: String, val filter: String, val page: Page, val collection: Boolean, val expires: Long)
+    private val continuations = linkedMapOf<String, Continuation>()
+    @Synchronized private fun token(query: String, filter: String, page: Page?, collection: Boolean = false): String? {
+        if (!Page.isValid(page)) return null
+        continuations.entries.removeAll { it.value.expires < System.currentTimeMillis() }
+        fun signature(item: Page) = "${item.url}|${item.id}|${item.ids}|${item.body?.contentHashCode()}"
+        continuations.entries.firstOrNull { it.value.query == query && it.value.filter == filter && it.value.collection == collection && signature(it.value.page) == signature(page!!) }?.let { return it.key }
+        while (continuations.size >= 64) continuations.remove(continuations.keys.first())
+        return java.util.UUID.randomUUID().toString().also { continuations[it] = Continuation(query, filter, page!!, collection, System.currentTimeMillis() + 600000) }
+    }
+    @Synchronized private fun continuation(token: String, query: String, collection: Boolean): Continuation =
+        requireNotNull(continuations[token]?.takeIf { it.query == query && it.collection == collection && it.expires > System.currentTimeMillis() }) { "Search page expired. Search again." }
+    private fun streamTrack(item: StreamInfoItem): Track? {
+        if (item.streamType !in setOf(StreamType.VIDEO_STREAM, StreamType.AUDIO_STREAM)) return null
+        val url = YouTubeLinks.track(item.url) ?: return null
+        return Track(url, item.name, item.uploaderName.orEmpty(), item.thumbnails.maxByOrNull { it.height }?.url.orEmpty(), item.duration.coerceAtLeast(0))
+    }
+    private fun catalog(items: List<org.schabi.newpipe.extractor.InfoItem>, kind: CatalogKind, musical: Boolean): List<CatalogEntry> = items.mapNotNull { item ->
+        when (item) {
+            is StreamInfoItem -> streamTrack(item)?.let { CatalogEntry(it.url, it.title, it.artist, it.artwork, CatalogKind.SONGS, it, musical) }
+            is org.schabi.newpipe.extractor.playlist.PlaylistInfoItem -> YouTubeLinks.playlist(item.url)?.let { url ->
+                CatalogEntry(url, item.name, item.uploaderName.orEmpty(), item.thumbnails.maxByOrNull { it.height }?.url.orEmpty(),
+                    if (kind == CatalogKind.ALBUMS && musical) CatalogKind.ALBUMS else CatalogKind.PLAYLISTS, musical = musical) }
+            is org.schabi.newpipe.extractor.channel.ChannelInfoItem -> CatalogEntry(item.url, item.name, "YouTube channel", item.thumbnails.maxByOrNull { it.height }?.url.orEmpty(), CatalogKind.CHANNELS)
+            else -> null
+        }
+    }.distinctBy { it.url }
+    override suspend fun searchPage(query: String, kind: CatalogKind, cursor: String?): CatalogPage {
+        val text = query.trim().take(200)
+        if (text.isBlank()) return CatalogPage(emptyList())
+        val desired = when (kind) { CatalogKind.ARTISTS -> return CatalogPage(emptyList(), notice = "Artists shown here have verified MusicBrainz credits in your library. Unverified source names appear under Channels."); CatalogKind.SONGS -> "music_songs"; CatalogKind.ALBUMS -> "music_albums"; CatalogKind.PLAYLISTS -> "music_playlists"; CatalogKind.CHANNELS -> "channels" }
+        suspend fun load(filter: String, notice: String? = null): CatalogPage = extract {
+            val service = ServiceList.YouTube
+            val next = cursor?.let { continuation(it, text, false) }
+            val actual = next?.filter ?: filter
+            val handler = service.searchQHFactory.fromQuery(text, listOf(actual), "")
+            val items: List<org.schabi.newpipe.extractor.InfoItem>; val page: Page?
+            if (next != null) { val result = SearchInfo.getMoreItems(service, handler, next.page); items = result.items; page = result.nextPage }
+            else { val result = SearchInfo.getInfo(service, handler); items = result.relatedItems; page = result.nextPage }
+            CatalogPage(catalog(items, kind, actual.startsWith("music_")), token(text, actual, page), notice)
+        }
+        return try { load(desired) } catch (e: CancellationException) { throw e }
+        catch (e: Exception) {
+            if (kind != CatalogKind.SONGS || cursor != null) throw e
+            load("videos", "Music search is unavailable; showing ranked public video results. Credits may be channel names.")
+        }
+    }
+    override suspend fun suggestions(query: String): List<String> = extract {
+        if (query.trim().length < 2) emptyList() else ServiceList.YouTube.suggestionExtractor.suggestionList(query.trim().take(200)).take(8)
+    }
+    override suspend fun related(track: Track): List<Track> = extract {
+        val extractor = ServiceList.YouTube.getStreamExtractor(track.url)
+        extractor.fetchPage()
+        extractor.relatedItems?.items.orEmpty().filterIsInstance<StreamInfoItem>().mapNotNull(::streamTrack).distinctBy { it.url }.take(40)
+    }
+    override suspend fun collection(url: String, cursor: String?): CatalogPage = extract {
+        val canonical = requireNotNull(YouTubeLinks.playlist(url)) { "Unsupported public playlist URL." }
+        val next = cursor?.let { continuation(it, canonical, true) }
+        val items: List<StreamInfoItem>; val page: Page?
+        if (next == null) { val info = PlaylistInfo.getInfo(ServiceList.YouTube, canonical); items = info.relatedItems; page = info.nextPage }
+        else { val result = PlaylistInfo.getMoreItems(ServiceList.YouTube, canonical, next.page); items = result.items; page = result.nextPage }
+        CatalogPage(catalog(items, CatalogKind.SONGS, true), token(canonical, "playlist", page, true))
+    }
+
     override suspend fun search(query: String): List<Track> = extract {
         if (query.isBlank()) return@extract emptyList()
         val service = ServiceList.YouTube

@@ -103,3 +103,21 @@ Attach only redacted logs when reporting failures. Audible output, physical head
 - [ ] On a slow or unstable connection, listen for startup stutter and recovery. The small initial buffer is a latency tradeoff; later buffering must still stabilize playback.
 - [ ] Resume a long podcast well beyond its first seconds; verify its saved position is honored. A beginning-only prefix does not guarantee an instant resume at distant positions.
 - [ ] Check About on a small screen, landscape, large text and TalkBack; the faster-start switch remains reachable and its purpose understandable.
+
+
+## Home, search and radio (0.5 beta)
+
+- [ ] Install over signed 0.4 without clearing storage. Keep favorites, playlists, history, podcast subscriptions/progress and a paused saved queue. Restore an older backup and check the same data.
+- [ ] New/empty library: Home has genuine search entry points and no seeded tracks. Enter interests; chips start real searches. Populated library: recent/favorite/playlist/continue shelves open and play the correct content.
+- [ ] Type rapidly, delete, change category and submit another query while a page is loading. Old results must never replace the new query. Check search history after relaunch; clear it. Disable online suggestions and compare behavior.
+- [ ] Search accents/case variants; inspect ranking reasons. Toggle All versions for live/cover/remix uploads. Check Songs, local matched Artists, Albums, Playlists and Channels; channels are never presented as verified artists. Page a collection and save only the clearly indicated loaded subset.
+- [ ] Tap one song with Autoplay on. Current playback should begin without waiting for recommendations; labeled automatic entries appear progressively. Listen naturally through many transitions for at least two hours on a phone, recording repeats, unwanted spoken content, artist diversity and data/battery use.
+- [ ] From a manual playlist choose Start radio explicitly. Separately play/edit/append/reorder a manual queue while a radio request is pending: it must stay manual and reject late additions.
+- [ ] Disable Autoplay mid-song: upcoming automatic entries disappear, the current song continues, and the player ends normally. Re-enabling alone must not modify a manual queue.
+- [ ] Background/screen-lock radio for at least 30 minutes. Test notification/lock-screen Next, Previous, seek, pause, Bluetooth, headphone removal and calls; verify the next automatic item is prepared and audio resumes appropriately.
+- [ ] Force-stop during radio, reopen and check the queue, reasons and position restore paused. Resume and let automatic replenishment continue; compare with a manual queue checkpoint.
+- [ ] Mark a recommendation Not interested: it disappears from radio and does not return. More music like this updates future selection. Early skip is only a gentle signal; seek-to-end must not count as a full listen. Restart a finished song and check history/repeats.
+- [ ] Disable personalization, reset preferences, and clear search history independently; favorites, history, playlists and podcasts remain. Reset hidden preferences should allow previously hidden songs again.
+- [ ] Opt into metadata enrichment for a well-documented artist, inspect source/confidence/date/license. Ambiguous albums remain absent. Test an obscure artist with no MusicBrainz/ListenBrainz result. Disable enrichment again.
+- [ ] Disconnect while searching/refilling and after successful discovery. Local results/library survive, cached candidates remain useful, the UI reports remote failure, and retry has no busy loop. Reconnect and retry deliberately.
+- [ ] Try a large library, narrow phone, landscape, large font and TalkBack. Horizontal shelves, menus, queue labels and settings stay reachable. Confirm there is no fabricated album/genre/language label.

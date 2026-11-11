@@ -1,0 +1,46 @@
+{
+  "seed": "https:\/\/www.youtube.com\/watch?v=O5HXROe-04Q",
+  "seedTitle": "La Flama",
+  "sourceCredit": "Obrint Pas",
+  "searchResults": 17,
+  "pagedResults": 35,
+  "unenrichedAutomaticCount": 4,
+  "automaticTracks": [
+    {
+      "url": "https:\/\/www.youtube.com\/watch?v=0PESwSqJvuE",
+      "title": "Llença't",
+      "sourceCredit": "Lax'n'Busto - Topic"
+    },
+    {
+      "url": "https:\/\/www.youtube.com\/watch?v=30ysfQI7XZI",
+      "title": "Som",
+      "sourceCredit": "Obrint Pas"
+    },
+    {
+      "url": "https:\/\/www.youtube.com\/watch?v=fL464Sq5v9g",
+      "title": "A Tornallom",
+      "sourceCredit": "La Gossa Sorda - Topic"
+    },
+    {
+      "url": "https:\/\/www.youtube.com\/watch?v=6MeumkLxaoQ",
+      "title": "Els Crits de la Terra",
+      "sourceCredit": "Obrint Pas"
+    }
+  ],
+  "automaticCount": 4,
+  "firstExplanation": "Related by the source · Discovery candidate",
+  "playedRecommendation": "https:\/\/www.youtube.com\/watch?v=0PESwSqJvuE",
+  "homeRecommendations": 7,
+  "manualQueuePreserved": true,
+  "autoplayOffEnded": true,
+  "backgroundPlayback": true,
+  "matchedArtist": "Obrint Pas",
+  "recordingMatched": false,
+  "genreEvidenceCount": 4,
+  "similarArtists": 8,
+  "ALBUMS": 14,
+  "ALBUMS_loadedTracks": 11,
+  "PLAYLISTS": 20,
+  "PLAYLISTS_loadedTracks": 11,
+  "CHANNELS": 20
+}

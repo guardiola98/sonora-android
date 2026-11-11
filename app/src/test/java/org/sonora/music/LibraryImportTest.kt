@@ -87,7 +87,7 @@ class LibraryImportTest {
             old.version = 1
         }
         val upgraded = Room.databaseBuilder(context, LibraryDatabase::class.java, "migration-import.db")
-            .addMigrations(DatabaseMigrations.FROM_1_TO_2, DatabaseMigrations.FROM_2_TO_3, DatabaseMigrations.FROM_3_TO_4).allowMainThreadQueries().build()
+            .addMigrations(DatabaseMigrations.FROM_1_TO_2, DatabaseMigrations.FROM_2_TO_3, DatabaseMigrations.FROM_3_TO_4, DatabaseMigrations.FROM_4_TO_5).allowMainThreadQueries().build()
         try {
             val record = upgraded.library().find(a.url)!!
             assertTrue(record.favorite); assertEquals(3, record.playCount); assertEquals(42L, record.lastPlayedAt)

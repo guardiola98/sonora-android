@@ -152,7 +152,7 @@ class LibraryFeaturesTest {
             old.execSQL("INSERT INTO playlists VALUES (1, 'old', 'Existing', 42)")
             old.execSQL("INSERT INTO playlist_entries VALUES (1, ?, 0)", arrayOf(a.url)); old.version = 2
         }
-        val upgraded = Room.databaseBuilder(context, LibraryDatabase::class.java, "features-migration.db").addMigrations(DatabaseMigrations.FROM_2_TO_3, DatabaseMigrations.FROM_3_TO_4).allowMainThreadQueries().build()
+        val upgraded = Room.databaseBuilder(context, LibraryDatabase::class.java, "features-migration.db").addMigrations(DatabaseMigrations.FROM_2_TO_3, DatabaseMigrations.FROM_3_TO_4, DatabaseMigrations.FROM_4_TO_5).allowMainThreadQueries().build()
         try {
             assertTrue(upgraded.library().find(a.url)!!.favorite)
             assertEquals(a.url, upgraded.library().playlistTracks(1).first().single().url)

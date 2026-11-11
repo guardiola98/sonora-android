@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -12,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
@@ -41,8 +43,8 @@ class NowPlayingAutoplayTest {
         val track = Track("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "Midnight City", "M83", "", 244)
         compose.setContent {
             SonoraTheme {
-                Surface {
-                    Box(Modifier.size(width = 320.dp, height = 570.dp)) {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    Box(Modifier.size(width = 320.dp, height = 570.dp).testTag("compact-now-playing")) {
                         CompositionLocalProvider(
                             LocalAddToPlaylist provides {},
                             LocalDiscoveryActions provides DiscoveryActions(autoplay = autoplay, setAutoplay = {
@@ -63,6 +65,7 @@ class NowPlayingAutoplayTest {
 
         val control = compose.onNodeWithContentDescription("Autoplay")
         control.assertIsDisplayed().assertIsOn().assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        compose.onNodeWithContentDescription("Play").assertIsDisplayed()
         screenshot("now-playing-autoplay-on.png")
         control.performClick().assertIsOff()
         compose.runOnIdle { assertFalse(DiscoverySettings(prefs).state.value.autoplay) }
@@ -73,7 +76,7 @@ class NowPlayingAutoplayTest {
     }
 
     private fun screenshot(name: String) {
-        val image = compose.onRoot().captureToImage().asAndroidBitmap()
+        val image = compose.onNodeWithTag("compact-now-playing").captureToImage().asAndroidBitmap()
         compose.activity.openFileOutput(name, Context.MODE_PRIVATE).use {
             check(image.compress(Bitmap.CompressFormat.PNG, 100, it))
         }

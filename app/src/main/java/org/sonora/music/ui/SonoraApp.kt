@@ -247,7 +247,12 @@ import org.sonora.music.playback.PlayerSnapshot
     val addToPlaylist = LocalAddToPlaylist.current
     var drag by remember(track.url) { mutableStateOf<Float?>(null) }
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
-        val artworkSize = minOf(maxHeight * 0.36f, (maxWidth - 40.dp).coerceAtLeast(1.dp), 400.dp)
+        val artworkSize = minOf(
+            maxHeight * 0.42f,
+            (maxHeight - 374.dp).coerceAtLeast(88.dp),
+            (maxWidth - 40.dp).coerceAtLeast(1.dp),
+            400.dp,
+        )
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Close player") }
@@ -278,10 +283,6 @@ import org.sonora.music.playback.PlayerSnapshot
                         Spacer(Modifier.width(4.dp))
                         Text("Add to playlist")
                     }
-                    if (isMusic) {
-                        TextButton(onClick = { actions.radio(track) }) { Text("Start radio") }
-                        TextButton(onClick = { actions.explain(track) }) { Text("Music details") }
-                    }
                 }
                 if (isMusic && actions.radioState.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 Slider(value = drag ?: player.positionMs.toFloat().coerceIn(0f, player.durationMs.coerceAtLeast(1).toFloat()),
@@ -296,7 +297,12 @@ import org.sonora.music.playback.PlayerSnapshot
                     FilledIconButton(onClick = onToggle, modifier = Modifier.size(80.dp)) { Icon(if (player.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (player.playing) "Pause" else "Play", Modifier.size(42.dp)) }
                     IconButton(onClick = onNext, enabled = player.index < player.queue.lastIndex, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipNext, "Next track", Modifier.size(36.dp)) }
                 }
-                if (org.sonora.music.domain.PodcastLinks.isEpisode(track.url)) {
+                if (isMusic) {
+                    FlowRow {
+                        TextButton(onClick = { actions.radio(track) }) { Text("Start radio") }
+                        TextButton(onClick = { actions.explain(track) }) { Text("Music details") }
+                    }
+                } else {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         OutlinedButton(onClick = { onSeek((player.positionMs - 15_000).coerceAtLeast(0)) }) { Text("−15 sec") }
                         var speedMenu by remember { mutableStateOf(false) }

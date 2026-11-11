@@ -1,10 +1,10 @@
 {
-  "version": "0.7.0-beta01",
-  "versionCode": 8,
-  "sha256": "ad78b099fb4c74060aff0f1fe099fb1250f4b85be08bd145a8166ba03a76a88a",
+  "version": "0.7.1-beta01",
+  "versionCode": 9,
+  "sha256": "c4cd25dc6205219aadfecd21a3a4993697e3677c44eb3302734365e72cbbb340",
   "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2",
-  "sourceCommit": "d988170115b9dce9c039a1cdbbadc9873fe6418e",
-  "notes": "Temporary playlist import with browser PKCE, playlist selection, conservative Spotify matching and explicit review of uncertain versions. Access tokens remain in memory and are discarded before review.\n\nAccount import requires distributor OAuth configuration. Spotify development access is limited to allowlisted testers. The experimental YouTube API adapter is disabled by default: its data-retention/background-player policy restrictions must be resolved, and its optional HTTPS broker is not deployed. Takeout and public-link import remain available.\n\nPreserves existing playlists, favorites, history, podcasts, Room schema and the persistent signing certificate. Automated and emulator checks passed; real-account OAuth and physical-phone streaming validation remain pending. See docs/OAUTH-IMPORT.md and docs/OAUTH-VALIDATION.md in the source repository.",
-  "sizeBytes": 17551214,
-  "apk": "releases/0.7.0-beta01/sonora-0.7.0-beta01.apk"
+  "sourceCommit": "96748afa3ade9e572f36fc62f10d2a93d73b9b02",
+  "notes": "Spotify playlist and saved-song import is now available through official account-data ZIP/JSON exports, without OAuth or developer credentials. Select lists, optionally search YouTube for playable versions, and review each match before saving. Exported metadata has no reliable duration, so uncertain recordings are never chosen automatically.\n\nPreserves playlist order, favorites, history and the existing merge-only reimport behavior. Supports split playlist files, saved-song Favorites, offline review, bounded ZIP parsing and cancellation. No account connection or token is retained. Takeout and public YouTube playlist imports continue to work.\n\nDirect Spotify account authorization still requires a registered public client ID and permitted users. Google account import remains experimental and disabled; its documented provider approval/hosting requirements are unresolved. These account flows have not been tested with real accounts. This release adds a working file-transfer route, not an enabled OAuth login.",
+  "sizeBytes": 17567598,
+  "apk": "releases/0.7.1-beta01/sonora-0.7.1-beta01.apk"
 }

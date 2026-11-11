@@ -1,0 +1,9 @@
+{
+  "version": "0.7.1-beta01",
+  "versionCode": 9,
+  "sha256": "c4cd25dc6205219aadfecd21a3a4993697e3677c44eb3302734365e72cbbb340",
+  "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2",
+  "sourceCommit": "96748afa3ade9e572f36fc62f10d2a93d73b9b02",
+  "notes": "Spotify playlist and saved-song import is now available through official account-data ZIP/JSON exports, without OAuth or developer credentials. Select lists, optionally search YouTube for playable versions, and review each match before saving. Exported metadata has no reliable duration, so uncertain recordings are never chosen automatically.\n\nPreserves playlist order, favorites, history and the existing merge-only reimport behavior. Supports split playlist files, saved-song Favorites, offline review, bounded ZIP parsing and cancellation. No account connection or token is retained. Takeout and public YouTube playlist imports continue to work.\n\nDirect Spotify account authorization still requires a registered public client ID and permitted users. Google account import remains experimental and disabled; its documented provider approval/hosting requirements are unresolved. These account flows have not been tested with real accounts. This release adds a working file-transfer route, not an enabled OAuth login.",
+  "sizeBytes": 17567598
+}

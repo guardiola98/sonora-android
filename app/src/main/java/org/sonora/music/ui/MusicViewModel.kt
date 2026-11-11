@@ -7,6 +7,7 @@ import kotlinx.coroutines.runInterruptible
 import org.sonora.music.data.*
 import kotlinx.coroutines.withContext
 import org.sonora.music.domain.ImportPreview
+import org.sonora.music.accountimport.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -63,6 +64,12 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
     val playerError = graph.playbackStatus.error
     val podcasts = PodcastPresenter(graph.podcasts, graph.podcastLibrary, playback, viewModelScope)
     val importer = ImportPresenter(graph.importer, viewModelScope)
+    private val accountHttp = AccountHttp()
+    val spotifyAuthorization = SpotifyAuthorization(accountHttp)
+    val googleImportAuthorization = GoogleImportAuthorization(org.sonora.music.BuildConfig.GOOGLE_CLIENT_ID, org.sonora.music.BuildConfig.GOOGLE_REDIRECT_URI) { code, verifier -> accountHttp.googleToken(org.sonora.music.BuildConfig.GOOGLE_TOKEN_ENDPOINT, code, verifier) }
+    val accountImporter = AccountImportPresenter(viewModelScope, graph.source, graph.source,
+        { provider -> if (provider == ImportProvider.SPOTIFY) SpotifyPlaylistSource(accountHttp) else YouTubePlaylistSource(accountHttp) },
+        { preview -> importer.load { preview } })
     val playlists = graph.library.playlists().catch { mutableMessage.value = "Could not read playlists."; emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private val selection = MutableStateFlow<Long?>(null)
@@ -185,7 +192,7 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
         catch (_: Exception) { mutableMessage.value = "History could not be cleared." }
     }
     fun dismissMessage() { mutableMessage.value = null }
-    override fun onCleared() { playback.release() }
+    override fun onCleared() { accountImporter.cancel(); playback.release() }
     class Factory(private val app: SonoraApplication) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = MusicViewModel(app) as T
     }

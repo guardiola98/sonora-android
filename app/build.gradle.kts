@@ -19,11 +19,26 @@ android {
         applicationId = "org.sonora.music"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "0.6.0-beta01"
+        versionCode = 8
+        versionName = "0.7.0-beta01"
         val releaseCertificate = rootProject.file("signing/certificate.sha256").readText().trim()
         require(releaseCertificate.matches(Regex("[0-9a-f]{64}")))
         buildConfigField("String", "OFFICIAL_CERTIFICATE_SHA256", "\"$releaseCertificate\"")
+        // Public client configuration only. Never add an OAuth client secret here.
+        val spotifyClient = providers.gradleProperty("sonora.spotifyClientId").orElse(providers.environmentVariable("SONORA_SPOTIFY_CLIENT_ID")).getOrElse("")
+        require(spotifyClient.isEmpty() || spotifyClient.matches(Regex("[A-Za-z0-9]{20,100}")))
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"$spotifyClient\"")
+        val googleClient = providers.gradleProperty("sonora.googleClientId").orElse(providers.environmentVariable("SONORA_GOOGLE_CLIENT_ID")).getOrElse("")
+        val googleHost = providers.gradleProperty("sonora.googleOAuthHost").orElse(providers.environmentVariable("SONORA_GOOGLE_OAUTH_HOST")).getOrElse("")
+        require(googleClient.isEmpty() || googleClient.matches(Regex("[A-Za-z0-9-]+\\.apps\\.googleusercontent\\.com")))
+        require(googleHost.isEmpty() || googleHost.matches(Regex("[a-z0-9]+(?:[.-][a-z0-9]+)*\\.[a-z]{2,}")))
+        require(googleClient.isEmpty() == googleHost.isEmpty()) { "Configure both Google public client ID and HTTPS broker host." }
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"$googleClient\"")
+        buildConfigField("String", "GOOGLE_REDIRECT_URI", "\"${if (googleHost.isEmpty()) "" else "https://$googleHost/oauth/callback"}\"")
+        buildConfigField("String", "GOOGLE_TOKEN_ENDPOINT", "\"${if (googleHost.isEmpty()) "" else "https://$googleHost/oauth/exchange"}\"")
+        val googleImportApproved = providers.gradleProperty("sonora.googleImportApproved").orElse(providers.environmentVariable("SONORA_GOOGLE_IMPORT_APPROVED")).getOrElse("false").toBoolean()
+        buildConfigField("boolean", "YOUTUBE_OAUTH_ENABLED", (googleClient.isNotEmpty() && googleImportApproved).toString())
+        manifestPlaceholders["googleOAuthHost"] = googleHost.ifEmpty { "oauth-disabled.invalid" }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true; buildConfig = true }

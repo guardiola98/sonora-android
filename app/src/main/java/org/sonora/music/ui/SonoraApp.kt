@@ -356,7 +356,7 @@ import org.sonora.music.playback.PlayerSnapshot
         text = { Column(Modifier.verticalScroll(rememberScrollState())) {
             Text("An independent, open-source music and podcast player. Built with NewPipeExtractor and Android Media3. Not affiliated with YouTube or Google.")
             Spacer(Modifier.height(12.dp))
-            Text("GPL-3.0-or-later. No accounts, ads or analytics. Favorites and history stay on this device. Streaming sends requests to YouTube, podcast publishers and image hosts. Podcast search uses Apple’s public directory.")
+            Text("GPL-3.0-or-later. No Sonora account required. No ads or analytics. Favorites and history stay on this device. Streaming sends requests to YouTube, podcast publishers and image hosts. Podcast search uses Apple’s public directory.")
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

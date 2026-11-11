@@ -1,3 +1,5 @@
+Latest development change: [temporary OAuth import validation](OAUTH-VALIDATION.md). The evidence below describes the published 0.6 release.
+
 # Sonora 0.6.0-beta01 publication validation
 
 Validated on 11 November 2026 with JDK 21, Gradle 8.13, SDK 36/build-tools 35.0.0 and an API 35 x86_64 emulator. This publishes the in-app updater and compact Now Playing changes already merged into main (`a42a3dc`), using the existing persistent release key. Previous [0.5 validation](VALIDATION-0.5-beta01.md) is archived.

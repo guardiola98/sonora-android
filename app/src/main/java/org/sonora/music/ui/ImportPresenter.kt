@@ -26,7 +26,7 @@ class ImportPresenter(private val repository: ImportRepository, private val scop
                 // Same-name files represent the same destination; merge before previewing.
                 val groups = preview.collections.groupBy { it.key }.values.map { parts ->
                     parts.first().copy(tracks = parts.flatMap { it.tracks }.distinctBy { it.url }, skipped = parts.sumOf { it.skipped }, duplicates = parts.sumOf { it.duplicates })
-                }.filter { it.tracks.isNotEmpty() }
+                }.filter { it.tracks.isNotEmpty() || preview.allowEmptyCollections }
                 require(groups.isNotEmpty()) { "No supported tracks found." }
                 require(groups.sumOf { it.tracks.size } <= 10_000) { "Import up to 10,000 track entries at a time." }
                 mutable.value = ImportState(preview = preview.copy(collections = groups), choices = groups.associate {

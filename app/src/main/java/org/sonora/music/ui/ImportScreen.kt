@@ -23,6 +23,23 @@ import org.sonora.music.domain.YouTubeLinks
 
 @UnstableApi
 @Composable fun ImportScreen(vm: MusicViewModel, state: ImportState, onClose: () -> Unit) {
+    val accountState by vm.accountImporter.state.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(vm, lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP && !vm.accountImporter.state.value.authorizing && !vm.accountImporter.state.value.disconnected) vm.accountImporter.cancel()
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            if ((context as? android.app.Activity)?.isChangingConfigurations != true) vm.accountImporter.cancel()
+        }
+    }
+    if (accountState.provider != null || accountState.error != null) {
+        AccountImportReview(vm.accountImporter, accountState)
+        return
+    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), vm::importFiles)
     var url by rememberSaveable { mutableStateOf("") }
     var help by rememberSaveable { mutableStateOf(false) }
@@ -34,7 +51,7 @@ import org.sonora.music.domain.YouTubeLinks
                 IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back to library") }
                 Text("Import your music", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             }
-            Text("Bring your YouTube Music playlists and likes to Sonora.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Copy playlists and exported likes into your local Sonora library.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         state.error?.let { message -> item {
             Surface(color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
@@ -99,6 +116,7 @@ import org.sonora.music.domain.YouTubeLinks
                 TextButton(onClick = vm.importer::reset) { Text("Choose another source") }
             }
         } else {
+            item { AccountImportButtons(vm) }
             item {
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -126,7 +144,7 @@ import org.sonora.music.domain.YouTubeLinks
                     TextButton(onClick = { browserError = runCatching { uriHandler.openUri("https://takeout.google.com/") }.isFailure }) { Text("Open Google Takeout") }
                     if (browserError) Text("Open https://takeout.google.com in a browser on your phone or computer.")
                 }
-                Text("This is a one-time copy. Google sign-in, account synchronization and audio downloads are not included.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("This is a one-time copy. Temporary authorization ends after reading your selection; account synchronization and audio downloads are not included.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

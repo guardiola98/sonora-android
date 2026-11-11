@@ -2,9 +2,9 @@
 
 [![Android beta](https://github.com/guardiola98/sonora-android/actions/workflows/android.yml/badge.svg)](https://github.com/guardiola98/sonora-android/actions/workflows/android.yml)
 
-An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account, API key, ads or analytics.
+An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account or API key is required for playback. No ads or analytics. Optional temporary playlist authorization requires distributor OAuth setup.
 
-**Version: 0.6.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
+**Development version: 0.7.0-beta01. Published release: 0.6.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
 <p>
   <img src="docs/screenshots/discovery-home.png" width="240" alt="Personalized Sonora Home on Android 15" />
@@ -24,7 +24,7 @@ Android may ask you to allow installation from the app opening the APK. Search f
 
 From Sonora 0.6, **About → Updates** checks the official distribution channel and hands verified updates to Android for confirmation. See [in-app updates](docs/UPDATES.md) for signing, publication and validation.
 
-GitHub Actions also builds a `sonora-0.6.0-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
+GitHub Actions also builds a `sonora-0.7.0-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
 
 ## Features
 
@@ -44,6 +44,7 @@ GitHub Actions also builds a `sonora-0.6.0-beta01-debug` artifact for developers
 - Create and rename local playlists, add/remove songs, drag handles to reorder with edge scrolling, and accessible move up/down menu actions. Imported playlists can be edited too.
 - Export a versioned Sonora JSON backup of favorites, all history, playlists (including empty ones), podcast subscriptions and episode progress; preview and merge backups atomically without deleting existing data.
 - Room favorites, listening history and imported playlists; history starts only when the player reports playback.
+- Temporary account playlist import (new in main, not in the published 0.6 APK): browser PKCE, multi-selection, conservative Spotify version review and early credential disposal. **Requires OAuth app registration; Google additionally needs the optional HTTPS broker and resolution of its API policy restrictions on permanent copies/background players.** Not enabled in an unconfigured build. [Setup, provider restrictions and privacy](docs/OAUTH-IMPORT.md).
 - Import public/unlisted YouTube Music playlist links, including subsequent pages.
 - Import Takeout ZIP/CSV playlists, library songs and exported likes, with a preview and per-list Playlist/Favorites choices. Reimports merge without duplicating entries or removing existing likes.
 - Optional missing-title lookup; file imports also work offline. Database upgrades preserve existing favorites and history.
@@ -131,7 +132,7 @@ Podcast formats, privacy, limits and manual checks: [PODCASTS.md](docs/PODCASTS.
 - Import is a one-time copy, not account synchronization. Sonora never signs in to Google. Likes/private playlists require exported files; only tracks present in the export can be imported. [Formats and limits](docs/IMPORTING.md).
 - Legacy track credit is the source uploader. Optional accepted MusicBrainz identities are stored separately with provenance; incomplete matches do not create album/genre claims. Public related items and sparse metadata cannot guarantee precise subgenre, language or scene matching.
 - Queue metadata and position are saved locally. Restoration itself remains paused and does not extract a stream. With faster starts enabled, the foreground screen can separately prepare likely tracks without autoplay. While playing, position checkpoints are written every two seconds; an abrupt kill can lose the last uncommitted interval. A cleared queue stays cleared.
-- No offline downloads, persistent audio cache, account sign-in, casting or equalizer. Shuffle/repeat, a sleep timer, resumable background imports and additional interface languages remain future work.
+- No offline downloads, persistent audio cache, persistent account sign-in, casting or equalizer. Shuffle/repeat, a sleep timer, resumable background imports and additional interface languages remain future work.
 - Source changes, IP throttling, verification requests and unavailable tracks can prevent playback. Sonora surfaces those failures and does not add credentials, proxies, DRM handling or access-restriction overrides.
 - Android force-stop stops playback. Manufacturer battery policies still require testing on physical hardware.
 - History shows the 200 most recently played distinct tracks.

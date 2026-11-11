@@ -38,6 +38,18 @@ class LibraryImportTest {
         val again = dao.importCollections(listOf(selection(listOf(a, b, c), true)), 300)
         assertEquals(ImportSummary(), again)
     }
+    @Test fun oauthYoutubeAndLinkImportsShareTheDestinationAndKeepOriginalOrder() = runTest {
+        val key = "youtube:PLabcdefghijk"
+        val original = ImportCollection(key, "Private list imported with consent", listOf(c, a, b))
+        db.library().importCollections(listOf(ImportSelection(original, true, false)), 1)
+        val result = db.library().importCollections(listOf(ImportSelection(original.copy(name = "Renamed upstream"), true, false)), 2)
+        assertEquals(ImportSummary(), result)
+        val id = db.library().findPlaylist(key)!!.id
+        assertEquals(listOf(c.url, a.url, b.url), db.library().playlistTracks(id).first().map { it.url })
+        val backup = db.library().exportBackup()
+        assertEquals(key, backup.playlists.single().key)
+        assertEquals(3, backup.tracks.size)
+    }
     @Test fun clearingHistoryRetainsPlaylistTracksAndDeletingAListRetainsFavorites() = runTest {
         val dao = db.library()
         dao.importCollections(listOf(selection(listOf(a, b))), 100)

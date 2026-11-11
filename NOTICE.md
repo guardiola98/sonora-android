@@ -31,3 +31,7 @@ The Sonora launcher vector is original project artwork. Track thumbnails are fet
 MusicBrainz core credits/identifiers are [CC0](https://musicbrainz.org/doc/About/Data_License). Its supplementary community genre data is **CC BY-NC-SA 3.0**, attributed in the evidence UI; it is not relicensed as GPL or bundled in the APK/source archive. MusicBrainz's free public web service is used within its non-commercial limits and identifying-user-agent/rate rules. A commercial deployment must review the provider terms separately.
 
 ListenBrainz public listen data is [CC0](https://listenbrainz.org/terms-of-service/); its Labs similar-artists results derive from that public dataset. Provider evidence retains the endpoint, date and confidence. Optional runtime caches stay local and are excluded from library exports. These data licenses do not change Sonora's GPL-3.0-or-later source license. See [provider behavior and limitations](docs/DISCOVERY.md).
+
+## Account-import attribution
+
+The Spotify white full logo is the unmodified PNG from Spotify's [official 2024 full-logo download](https://developer.spotify.com/images/guidelines/design/2024-spotify-full-logo.zip), used only to attribute imported Spotify metadata under the [branding guidelines](https://developer.spotify.com/documentation/design). Spotify trademarks and this asset remain Spotify's property; they are not relicensed as GPL. No Google brand artwork or proprietary Google Play services SDK is bundled. The optional broker and Android integration source use the repository's GPL-3.0-or-later license.

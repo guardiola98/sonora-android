@@ -7,7 +7,7 @@ data class ImportCollection(
     val key: String, val name: String, val tracks: List<Track>,
     val favoritesHint: Boolean = false, val skipped: Int = 0, val duplicates: Int = 0
 )
-data class ImportPreview(val collections: List<ImportCollection>, val ignoredFiles: Int = 0) {
+data class ImportPreview(val collections: List<ImportCollection>, val ignoredFiles: Int = 0, val allowEmptyCollections: Boolean = false) {
     val trackCount get() = collections.flatMap { it.tracks }.distinctBy { it.url }.size
 }
 data class ImportChoice(val key: String, val playlist: Boolean, val favorites: Boolean)

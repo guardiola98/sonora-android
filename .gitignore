@@ -24,3 +24,9 @@ signing.properties
 dist-release/
 .publish-worktree/
 __pycache__/
+
+# Optional OAuth broker local configuration/secrets
+oauth-broker/wrangler.toml
+oauth-broker/.dev.vars*
+oauth-broker/.env*
+oauth-broker/.wrangler/

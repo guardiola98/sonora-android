@@ -1,0 +1,15 @@
+# Copy to ignored wrangler.toml and configure an HTTPS custom domain you control.
+# No deployment runs from CI. Set GOOGLE_CLIENT_SECRET using `wrangler secret put`.
+name = "sonora-google-import"
+main = "worker.mjs"
+compatibility_date = "2026-11-01"
+workers_dev = false
+[observability]
+enabled = false
+[vars]
+PUBLIC_HOST = "auth.example.com"
+GOOGLE_CLIENT_ID = "replace-with-web-client.apps.googleusercontent.com"
+ANDROID_CERTIFICATES_SHA256 = "REPLACE_WITH_PUBLIC_RELEASE_CERTIFICATE_SHA256_COLON_SEPARATED"
+# [[routes]]
+# pattern = "auth.example.com"
+# custom_domain = true

@@ -1,0 +1,9 @@
+{
+  "version": "0.7.0-beta01",
+  "versionCode": 8,
+  "sha256": "ad78b099fb4c74060aff0f1fe099fb1250f4b85be08bd145a8166ba03a76a88a",
+  "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2",
+  "sourceCommit": "d988170115b9dce9c039a1cdbbadc9873fe6418e",
+  "notes": "Temporary playlist import with browser PKCE, playlist selection, conservative Spotify matching and explicit review of uncertain versions. Access tokens remain in memory and are discarded before review.\n\nAccount import requires distributor OAuth configuration. Spotify development access is limited to allowlisted testers. The experimental YouTube API adapter is disabled by default: its data-retention/background-player policy restrictions must be resolved, and its optional HTTPS broker is not deployed. Takeout and public-link import remain available.\n\nPreserves existing playlists, favorites, history, podcasts, Room schema and the persistent signing certificate. Automated and emulator checks passed; real-account OAuth and physical-phone streaming validation remain pending. See docs/OAUTH-IMPORT.md and docs/OAUTH-VALIDATION.md in the source repository.",
+  "sizeBytes": 17551214
+}

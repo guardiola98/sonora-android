@@ -4,6 +4,11 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object DatabaseMigrations {
+    val FROM_2_TO_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS playback_checkpoint (id INTEGER NOT NULL PRIMARY KEY, queueJson TEXT NOT NULL, currentIndex INTEGER NOT NULL, positionMs INTEGER NOT NULL)")
+        }
+    }
     val FROM_1_TO_2 = object : Migration(1, 2) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("CREATE TABLE IF NOT EXISTS playlists (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, sourceKey TEXT NOT NULL, name TEXT NOT NULL, importedAt INTEGER NOT NULL)")

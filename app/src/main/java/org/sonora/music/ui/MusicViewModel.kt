@@ -4,7 +4,8 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
-import org.sonora.music.data.TakeoutParser
+import org.sonora.music.data.*
+import kotlinx.coroutines.withContext
 import org.sonora.music.domain.ImportPreview
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -38,6 +39,77 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
         try { graph.library.deletePlaylist(id); if (selection.value == id) selection.value = null }
         catch (e: CancellationException) { throw e }
         catch (_: Exception) { mutableMessage.value = "Could not delete this playlist." }
+    }
+    private val mutableBackup = MutableStateFlow(BackupState())
+    val backup = mutableBackup.asStateFlow()
+    fun exportBackup(uri: Uri) {
+        if (mutableBackup.value.busy) return
+        mutableBackup.value = BackupState(busy = true)
+        viewModelScope.launch {
+            try {
+                val snapshot = graph.library.exportBackup()
+                withContext(Dispatchers.IO) {
+                    val bytes = BackupCodec.encode(snapshot).toByteArray(Charsets.UTF_8)
+                    app.contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes); it.flush() }
+                        ?: error("No writable document")
+                }
+                mutableBackup.value = BackupState(message = "Backup saved: ${snapshot.tracks.size} tracks and ${snapshot.playlists.size} playlists.")
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { mutableBackup.value = BackupState(error = "Backup could not be saved. Check available storage and choose another location. Delete any incomplete file.") }
+        }
+    }
+    fun previewBackup(uri: Uri) {
+        if (mutableBackup.value.busy) return
+        mutableBackup.value = BackupState(busy = true)
+        viewModelScope.launch {
+            try {
+                val preview = runInterruptible(Dispatchers.IO) { app.contentResolver.openInputStream(uri)?.use(BackupCodec::read) ?: error("No readable document") }
+                mutableBackup.value = BackupState(preview = preview)
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { mutableBackup.value = BackupState(error = "This is not a supported Sonora backup, is incomplete, or exceeds the import limits. Your library was not changed.") }
+        }
+    }
+    fun dismissBackupPreview() { if (!mutableBackup.value.busy) mutableBackup.value = BackupState() }
+    fun restoreBackup() {
+        val initial = mutableBackup.value
+        val preview = initial.preview ?: return
+        if (initial.busy) return
+        mutableBackup.value = initial.copy(busy = true, error = null)
+        viewModelScope.launch {
+            try {
+                val result = graph.library.restoreBackup(preview)
+                mutableBackup.value = BackupState(message = "Restored ${result.tracks} new tracks, ${result.favorites} favorites and ${result.playlists} playlists (${result.entries} new playlist entries).")
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { mutableBackup.value = initial.copy(error = "Restore failed. No partial changes were saved. Check storage and retry.") }
+        }
+    }
+    fun createPlaylist(name: String, track: Track? = null, onCreated: (Long) -> Unit = {}) = viewModelScope.launch {
+        try {
+            val id = graph.library.createPlaylistWithTracks(name, listOfNotNull(track))
+            mutableMessage.value = if (track == null) "Playlist created" else "Playlist created and song added"
+            onCreated(id)
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) { mutableMessage.value = "Could not create playlist. Use a name of 1–180 characters and check storage." }
+    }
+    fun renamePlaylist(id: Long, name: String) = viewModelScope.launch {
+        try { graph.library.renamePlaylist(id, name) }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { mutableMessage.value = "Could not rename playlist." }
+    }
+    fun addToPlaylist(id: Long, track: Track, done: () -> Unit) = viewModelScope.launch {
+        try { graph.library.addToPlaylist(id, listOf(track)); mutableMessage.value = "Saved to playlist"; done() }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { mutableMessage.value = "Could not add song to playlist." }
+    }
+    fun removeFromPlaylist(id: Long, url: String) = viewModelScope.launch {
+        try { graph.library.removeFromPlaylist(id, url) }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { mutableMessage.value = "Could not remove song from playlist." }
+    }
+    fun reorderPlaylist(id: Long, order: List<String>, done: (Boolean) -> Unit) = viewModelScope.launch {
+        try { graph.library.reorderPlaylist(id, order); done(true) }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { mutableMessage.value = "Could not save playlist order."; done(false) }
     }
     fun importFiles(uris: List<Uri>) {
         if (uris.isEmpty()) return

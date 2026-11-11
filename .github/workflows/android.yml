@@ -26,18 +26,51 @@ jobs:
         run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
       - name: Compile, test and lint
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
+      # Signing secrets are scoped to trusted main/tag builds, never pull-request code.
+      - name: Build signed release when repository signing secrets are configured
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        env:
+          SONORA_KEYSTORE_BASE64: ${{ secrets.SONORA_KEYSTORE_BASE64 }}
+          SONORA_STORE_PASSWORD: ${{ secrets.SONORA_STORE_PASSWORD }}
+          SONORA_KEY_ALIAS: ${{ secrets.SONORA_KEY_ALIAS }}
+          SONORA_KEY_PASSWORD: ${{ secrets.SONORA_KEY_PASSWORD }}
+        run: |
+          if [ -z "$SONORA_KEYSTORE_BASE64" ]; then
+            echo "Release signing is not configured in Actions. Official signed APKs are on the apk-releases branch."
+            exit 0
+          fi
+          export SONORA_KEYSTORE_PATH="$RUNNER_TEMP/sonora-release.p12"
+          trap 'rm -f "$SONORA_KEYSTORE_PATH"' EXIT
+          printf '%s' "$SONORA_KEYSTORE_BASE64" | base64 --decode > "$SONORA_KEYSTORE_PATH"
+          chmod 600 "$SONORA_KEYSTORE_PATH"
+          unset SONORA_KEYSTORE_BASE64
+          ./gradlew --no-daemon assembleRelease
+          python3 tools/verify-release.py
+          mkdir -p signed-dist
+          cp app/build/outputs/apk/release/app-release.apk signed-dist/sonora-0.2.0-beta01.apk
+          git archive --format=zip --output=signed-dist/sonora-source.zip HEAD
+          cp LICENSE NOTICE.md signed-dist/
+          cd signed-dist
+          sha256sum sonora-0.2.0-beta01.apk > SHA256SUMS
+      - name: Upload signed release when built
+        if: hashFiles('signed-dist/*.apk') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sonora-0.2.0-beta01-signed
+          path: signed-dist/
+          retention-days: 30
       - name: Package installable debug APK and matching source
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/sonora-0.1.0-beta02-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/sonora-0.2.0-beta01-debug.apk
           git archive --format=zip --output=dist/sonora-source.zip HEAD
           cp LICENSE NOTICE.md dist/
           cd dist
-          sha256sum sonora-0.1.0-beta02-debug.apk > SHA256SUMS
+          sha256sum sonora-0.2.0-beta01-debug.apk > SHA256SUMS
       - name: Upload debug beta
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sonora-0.1.0-beta02-debug
+          name: sonora-0.2.0-beta01-debug
           path: dist/
           retention-days: 30
           if-no-files-found: error

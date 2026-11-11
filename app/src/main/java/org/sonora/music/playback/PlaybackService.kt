@@ -17,6 +17,7 @@ import kotlinx.coroutines.*
 import org.sonora.music.MainActivity
 import org.sonora.music.SonoraApplication
 import org.sonora.music.data.ExtractorDownloader
+import org.sonora.music.data.SavedQueue
 import org.sonora.music.domain.MusicSourceException
 
 @UnstableApi
@@ -27,6 +28,10 @@ class PlaybackService : MediaSessionService() {
     private lateinit var player: ExoPlayer
     private var refreshed = false
     private var recorded = false
+    private var loadingQueue = true
+    private var changedDuringRestore = false
+    private var applyingRestore = false
+    private var destroying = false
 
     override fun onCreate() {
         super.onCreate()
@@ -44,6 +49,14 @@ class PlaybackService : MediaSessionService() {
             setHandleAudioBecomingNoisy(true)
             setWakeMode(C.WAKE_MODE_NETWORK)
             addListener(object : Player.Listener {
+                override fun onEvents(player: Player, events: Player.Events) {
+                    if (destroying) return
+                    if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
+                            Player.EVENT_POSITION_DISCONTINUITY, Player.EVENT_PLAY_WHEN_READY_CHANGED, Player.EVENT_PLAYBACK_STATE_CHANGED)) {
+                        if (loadingQueue) { if (!applyingRestore) changedDuringRestore = true }
+                        else saveQueue()
+                    }
+                }
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     refreshed = false; recorded = false
                     graph.playbackStatus.report(null)
@@ -83,6 +96,21 @@ class PlaybackService : MediaSessionService() {
                     else MediaSession.ConnectionResult.reject()
                 }
             }).build()
+        scope.launch {
+            val saved = try { graph.queueStore.read() }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { graph.playbackStatus.report("Previous queue could not be restored."); SavedQueue() }
+            if (!changedDuringRestore && player.mediaItemCount == 0 && saved.tracks.isNotEmpty()) {
+                applyingRestore = true
+                player.setMediaItems(saved.tracks.map { it.toMediaItem() }, saved.index, saved.positionMs)
+                player.playWhenReady = false // Restoring never starts audio or contacts the source.
+                applyingRestore = false
+            }
+            loadingQueue = false
+            saveQueue()
+            while (isActive) { delay(2_000); if (player.isPlaying) saveQueue() }
+        }
+
     }
     private fun recordIfPlaying() {
         if (!player.isPlaying || recorded) return
@@ -94,11 +122,18 @@ class PlaybackService : MediaSessionService() {
             catch (_: Exception) { graph.playbackStatus.report("Playing, but history could not be saved.") }
         }
     }
+    private fun saveQueue() {
+        if (loadingQueue) return
+        graph.queueStore.save(SavedQueue((0 until player.mediaItemCount).map { player.getMediaItemAt(it).toTrack() },
+            player.currentMediaItemIndex.coerceAtLeast(0), player.currentPosition.coerceAtLeast(0)))
+    }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (!player.playWhenReady || player.mediaItemCount == 0 || player.playbackState == Player.STATE_ENDED) stopSelf()
     }
     override fun onDestroy() {
+        saveQueue()
+        destroying = true
         session?.release(); session = null
         player.release()
         scope.cancel()

@@ -4,24 +4,26 @@
 
 An independent, open-source music player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. No account, API key, ads or analytics.
 
-**Version: 0.1.0-beta02.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
+**Version: 0.2.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
 <p>
   <img src="docs/screenshots/home.png" width="220" alt="Sonora home on Android 15" />
   <img src="docs/screenshots/search.png" width="220" alt="Sonora search on Android 15" />
   <img src="docs/screenshots/import-preview.png" width="220" alt="Sonora import preview with labeled test fixtures" />
+  <img src="docs/screenshots/playlist-editor.png" width="220" alt="Sonora 0.2 playlist editor after dragging test songs" />
 </p>
 
-Actual emulator screenshots: Home/Search from beta01 and the import preview from beta02. No demo tracks are seeded; the import preview uses explicitly labeled test fixtures.
+Actual emulator screenshots: Home/Search from 0.1-beta01, the import preview from 0.1-beta02 and the playlist editor from 0.2-beta01. No demo tracks are seeded; the import preview uses explicitly labeled test fixtures.
 
 ## Install
 
-1. Open [Android beta → latest successful run](https://github.com/guardiola98/sonora-android/actions/workflows/android.yml).
-2. Download the `sonora-0.1.0-beta02-debug` artifact (GitHub sign-in may be required).
-3. Extract the ZIP and install `sonora-0.1.0-beta02-debug.apk`. Android may ask you to allow installation from the app opening the APK.
-4. Search for a song, or open **Library → Import music** to bring your playlists and likes. See the [import guide](docs/IMPORTING.md).
+Download the [signed Sonora 0.2 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.2.0-beta01/sonora-0.2.0-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
 
-The artifact also includes the exact source snapshot, license, attribution and APK SHA-256. Debug APKs are signed automatically with an ephemeral development key. Different CI runs or local machines may use different keys; Android then requires uninstalling the old build before installing the new one, which clears local data. This beta does not contain a production signing key.
+This release uses a **persistent signing key**. Future releases using this key can update it without uninstalling or clearing the library. Earlier **debug** builds can have different certificates and cannot necessarily be upgraded in place. Do not uninstall an older build with data you need unless you have a usable backup. A new signing key cannot grant access to another application's private data. See [release signing and upgrade notes](docs/RELEASING.md).
+
+Android may ask you to allow installation from the app opening the APK. Search for a song or use **Library → Import music** for YouTube Music playlists/likes. Use **Library → Backup and restore** to save a copy outside the app before changing phones or uninstalling.
+
+GitHub Actions also builds a `sonora-0.2.0-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
 
 ## Features
 
@@ -30,7 +32,9 @@ The artifact also includes the exact source snapshot, license, attribution and A
 - Audio playback, pause, previous/restart, next and seeking.
 - Persistent mini-player across Home, Search and Library.
 - `MediaSessionService` with automatic media notification, lock-screen controls, audio focus and headphone-disconnect handling.
-- Queue: play a list, append, jump, remove, move up and clear.
+- Queue: play a list, append, jump, remove, move up and clear; restore the list, selected song and last saved position after process death/reboot, paused until you press Play.
+- Create and rename local playlists, add/remove songs, drag handles to reorder with edge scrolling, and accessible move up/down menu actions. Imported playlists can be edited too.
+- Export a versioned Sonora JSON backup of favorites, all history and playlists (including empty ones); preview and merge backups atomically without deleting existing data.
 - Room favorites, listening history and imported playlists; history starts only when the player reports playback.
 - Import public/unlisted YouTube Music playlist links, including subsequent pages.
 - Import Takeout ZIP/CSV playlists, library songs and exported likes, with a preview and per-list Playlist/Favorites choices. Reimports merge without duplicating entries or removing existing likes.
@@ -57,7 +61,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 The wrapper uses Gradle 8.13 with a pinned distribution SHA-256. Dependency versions are pinned in [`gradle/libs.versions.toml`](gradle/libs.versions.toml). See [dependency decisions and official references](docs/DEPENDENCIES.md).
 
-Unit tests cover persistent Room data, the v1→v2 migration, CSV/ZIP parsing and size bounds, atomic imports, deduplication, independent favorites/history updates, history clearing, stale search cancellation, error/retry behavior and stream cache expiry/invalidation/concurrency. Live source tests are skipped by default so public CI is deterministic.
+Unit tests cover persistent Room data, v1→v2→v3 migrations, backup validation/round trips/rollback, playlist editing, queue checkpoints, CSV/ZIP parsing and size bounds, atomic imports, deduplication, independent favorites/history updates, history clearing, stale search cancellation, error/retry behavior and stream cache expiry/invalidation/concurrency. Live source tests are skipped by default so public CI is deterministic.
 
 ```bash
 # Opt-in: real search, extraction and an HTTP audio-byte probe (not an audio playback test)
@@ -82,7 +86,8 @@ Compose screens → MusicViewModel → SearchPresenter → MusicSource
                             │                           └── NewPipeMusicSource → external NewPipeExtractor
                             ├── ImportPresenter → ImportRepository → LibraryImportSource
                             │                  └── TakeoutParser      └── NewPipeMusicSource
-                            ├── Room LibraryDao (schema v2, explicit v1 migration)
+                            ├── BackupCodec → Room library snapshot / merge
+                            ├── Room LibraryDao (schema v3, explicit v1/v2 migrations)
                             └── MediaController → PlaybackService / MediaSession → ExoPlayer
                                                                          └── StreamResolver → MusicSource
 ```
@@ -93,20 +98,20 @@ Compose screens → MusicViewModel → SearchPresenter → MusicSource
 - `ui/` contains Compose screens, the MVVM presentation layer and lifecycle-aware StateFlow collection.
 - A small application graph supplies dependencies; no global Activity or player references are retained by the UI.
 
-Stream URLs are resolved lazily on ExoPlayer's loader path, on an IO dispatcher. They are never persisted in Room or passed to the screens. Signed URL expiry triggers a bounded retry, with a manual retry if the source still fails. Favorites, history and playlists contain canonical source URLs and metadata only. File parsing is independent of networking and playback; importing does not start playback or create listening-history entries. The import transaction either completes or rolls back. Core library NIO desugaring supports NewPipeExtractor on API 26–32.
+Stream URLs are resolved lazily on ExoPlayer's loader path, on an IO dispatcher. They are never persisted in Room or passed to the screens. Signed URL expiry triggers a bounded retry, with a manual retry if the source still fails. Favorites, history, playlists and persisted queue contain canonical source URLs and metadata only. File parsing is independent of networking and playback; importing does not start playback or create listening-history entries. Import and backup restore transactions either complete or roll back. A process-wide queue writer serializes checkpoints and outlives service teardown; position-only updates avoid rewriting the queue JSON. Core library NIO desugaring supports NewPipeExtractor on API 26–32.
 
 ## Beta scope
 
 - Search returns the first page of normal video/audio results; live streams are excluded. Playlist imports follow pagination, up to the documented import limits.
 - Import is a one-time copy, not account synchronization. Sonora never signs in to Google. Likes/private playlists require exported files; only tracks present in the export can be imported. [Formats and limits](docs/IMPORTING.md).
 - Artist text is the uploader name reported by the source, not a curated music database.
-- Queue survives screen changes and normal background playback, but is intentionally not restored after process death, force-stop or reboot.
-- No downloads, offline audio cache, account sign-in, casting or equalizer.
+- Queue metadata and position are saved locally. Reopening restores them in pause without extracting a stream. While playing, position checkpoints are written every two seconds; an abrupt kill can lose the last uncommitted interval. A cleared queue stays cleared.
+- No downloads, offline audio cache, account sign-in, casting or equalizer. Shuffle/repeat, a sleep timer, resumable background imports, search pagination and additional interface languages remain future work.
 - Source changes, IP throttling, verification requests and unavailable tracks can prevent playback. Sonora surfaces those failures and does not add credentials, proxies, DRM handling or access-restriction overrides.
 - Android force-stop stops playback. Manufacturer battery policies still require testing on physical hardware.
 - History shows the 200 most recently played distinct tracks.
 
-See the [real-device checklist](docs/MANUAL_TESTS.md), [privacy notes](PRIVACY.md), [license](LICENSE) and [third-party notices](NOTICE.md).
+See the [backup guide](docs/BACKUPS.md), [playlist guide](docs/PLAYLISTS.md), [real-device checklist](docs/MANUAL_TESTS.md), [privacy notes](PRIVACY.md), [license](LICENSE) and [third-party notices](NOTICE.md).
 
 ## Contributing
 

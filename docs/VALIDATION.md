@@ -1,44 +1,31 @@
-# Beta02 validation record
+# Sonora 0.2.0-beta01 validation
 
-Date: **2026-11-10 (UTC)**. Version **0.1.0-beta02**, version code **2**. Environment: Debian Linux, OpenJDK 21, Android SDK 36/build-tools 35.0.0, Gradle 8.13; API 35 x86_64 Google ATD emulator with KVM. SDK/cache/emulator files are ignored under `.tooling/`. No dependency was added or changed; see [pinned dependency decisions](DEPENDENCIES.md). The earlier beta01 evidence is archived in [VALIDATION-beta01.md](VALIDATION-beta01.md).
+Session: 11 November 2026 (Europe/Madrid), Debian Linux, JDK 21, Gradle 8.13, SDK 36/build-tools 35.0.0. No dependency version was changed. Earlier [beta01](VALIDATION-beta01.md) and [0.1-beta02](VALIDATION-0.1-beta02.md) evidence is archived.
 
 ## Completed checks
 
-| Check | Observed result |
-|---|---|
-| `./gradlew assembleDebug` | **PASS** — debug APK generated and installed |
-| `./gradlew testDebugUnitTest` | **PASS** — 27 deterministic tests, 2 opt-in live tests skipped |
-| `./gradlew lintDebug` | **PASS** — 0 errors, 20 existing warnings |
-| `./gradlew assembleDebugAndroidTest` | **PASS** — instrumentation APK compiled |
-| APK signature and manifest | **PASS** — v2 signature; version code 2, minSdk 26, targetSdk 36 |
-| `SONORA_LIVE_IMPORT=true ./gradlew testDebugUnitTest --tests '*LiveImportTest'` | **PASS** — 200 unique tracks across 2 pages from a real public playlist |
-| Final APK instrumentation | **PASS** — ImportDeviceTest + PlaybackDeviceTest, `OK (4 tests)`, 110.853 s |
-| Final UI screenshots | **PASS** — UiSmokeTest, `OK (1 test)`, 4.106 s; import preview visually reviewed |
+- Debug assembly: passed.
+- Unit suite: 40 deterministic tests passed, 2 opt-in live tests skipped.
+- Android lint: passed, no errors.
+- `assembleRelease` and `assembleReleaseAndroidTest`: passed. The distributed release is signed, non-debuggable, and deliberately unminified for this beta.
+- Release device suite: **5 passed**, 116.207 s (library editing/drag/export/restore, Takeout import, PCM/session controls, Activity reopening and live YouTube playback).
+- Release UI navigation: **1 passed**, 3.708 s.
+- Release queue seed: **1 passed**, 1.741 s; the verifier stage is intentionally skipped in that invocation.
+- Actual `am force-stop`, followed by `adb install -r` of the same signed release, then queue verification: **1 passed**, 1.921 s; the seed stage is intentionally skipped in that invocation.
+- The restored queue retained index 1 and position 12,345 ms, remained paused, did not create listening history and persisted subsequent clearing.
+- APK signature/certificate/application ID/non-debuggable manifest verified by `tools/verify-release.py`.
+- Playlist editor screenshot captured from the actual UI and visually reviewed. Its song titles explicitly identify synthetic test fixtures.
 
-The combined final build command was `assembleDebug testDebugUnitTest lintDebug assembleDebugAndroidTest` and completed successfully. The live playlist used `PLMC9KNkIncKtPzgY-5rmhvj7fax8fdxoj`; its contents may change. This test checks extractor pagination and metadata, not playback.
+New unit coverage includes full JSON backup round trips, empty playlists, repeat-restore idempotence, history/favorite preservation, rollback on failure, invalid/oversized input, local playlist editing and order, concurrent additions, v2→v3 migration, canonical queue checkpoints, latest-position writes and durable queue clearing. The existing v1 migration test now verifies the full v1→v2→v3 path.
 
-New deterministic tests cover BOM/quoted/multiline/semicolon CSV, URL validation, old Takeout metadata, likes suggestions, duplicate reporting, oversized/invalid ZIP/CSV, optional headers, Room v1→v2 migration, additive ordering, existing favorites/history preservation, missing metadata, offline lookup failure and rollback after an injected write failure.
+Remaining physical-device acceptance is listed in [MANUAL_TESTS.md](MANUAL_TESTS.md). Headless emulator progress/decoder tests do not establish human-audible output, Bluetooth/lock-screen interaction or manufacturer battery behavior. The actual Android document picker and provider permissions still require manual testing; automated file tests exercise its ContentResolver callback.
 
-`ImportDeviceTest` creates two synthetic CSVs in app-private cache and passes their URIs through the actual ViewModel/ContentResolver import callback. It drives preview/save/library UI, verifies playlist order and the imported favorite, then repeats the import and checks zero added entries/hearts. Its fixtures are cleaned up. This exercises the picker callback, **not the system document-picker interaction or a real user's private export**.
+Signed publication uses the persistent local key, with a tracked public fingerprint. GitHub Actions signing secrets are not configured by this session; see [RELEASING.md](RELEASING.md). The official APK/source are published over SSH on `apk-releases`, separately from ephemeral debug artifacts.
 
-During UI review an intentional MediaController release left a stale disconnection warning for the next Activity. The fix suppresses errors on intentional release and clears stale connection-specific errors after a successful connection. A new device regression test closes/reopens the Activity and asserts connected state with no player failure.
+## Published binary and source
 
-The final device run exercised actual PCM decoding, seeking, queue navigation, pause, a media transport notification and background position progression. It also extracted and played a real YouTube result for `Kevin MacLeod Carefree`, with ExoPlayer reporting playing beyond two seconds and continued progress in the background. The new Activity reopening regression passed. The separate UI run checked all three bottom-navigation screens. The import preview screenshot uses synthetic test metadata; it is not a seeded production library.
+The exact APK hash and source commit are recorded with the binary in `releases/0.2.0-beta01/release.json` and `SHA256SUMS` on the [apk-releases branch](https://github.com/guardiola98/sonora-android/tree/apk-releases). The publication helper verifies a clean source checkout and recorded build provenance. The tested executable DEX, manifest and resources are compared again after the final commit/build, so documentation/version-control packaging metadata cannot silently replace tested code. The private signing key is not in either branch or artifact.
 
-## Exact local APK
+The live test actually searched YouTube, extracted audio and observed ExoPlayer playing beyond two seconds, then progressing in the background. The PCM test verified seeking, queue navigation, pause and a transport notification. Host audio remained disabled; physical audible playback is still a manual acceptance item.
 
-Path: `app/build/outputs/apk/debug/app-debug.apk`
-
-```text
-SHA-256  8fd41ccceda3ea50ba9d0806d3a1501f9eb94d0c0e0dd06b2ee42a1d5a500b1f
-```
-
-CI uses a different ephemeral debug key and can produce a different APK hash. Each artifact includes its own SHA256SUMS and source snapshot. See the [Android beta workflow](https://github.com/guardiola98/sonora-android/actions/workflows/android.yml). Upgrading without losing local data requires APKs signed with the same key; uninstalling clears the database.
-
-## Remaining real-device checks
-
-- Real Google Takeout exports vary by account, language and date. Formats are covered by synthetic fixtures, not a private Google account. Only exported video references can be recovered; Sonora does not promise that Google includes every like.
-- Test the real document picker/provider permissions, large archives, user cancellation, TalkBack/large fonts, rotation and process interruption using the [manual checklist](MANUAL_TESTS.md).
-- Emulator host audio is disabled. Physical audible output, lock-screen/headset controls, calls, manufacturer battery policies and long locked playback require a phone. API 26/36 device runs remain manual.
-- Imports are a one-time local copy; no account synchronization or audio download. Queue restoration after process death is outside beta scope.
-- Live source success is time-dependent and is not a guarantee for every video, network or future extractor change.
+A minified instrumentation attempt failed in AndroidJUnitRunner because shared tracing classes had been removed. The published beta disables shrinking and obfuscation; all eight device checks above passed on that signed configuration. This is a release-size/diagnostics tradeoff, not a debug build.

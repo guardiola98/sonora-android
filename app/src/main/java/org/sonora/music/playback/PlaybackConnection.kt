@@ -49,7 +49,7 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
         val c = controller ?: return
         mutable.value = PlayerSnapshot(true, (0 until c.mediaItemCount).map { c.getMediaItemAt(it).toTrack() },
             c.currentMediaItemIndex, c.playWhenReady, c.playbackState == Player.STATE_BUFFERING,
-            c.currentPosition.coerceAtLeast(0), c.duration.takeIf { it > 0 } ?: 0)
+            c.currentPosition.coerceAtLeast(0), c.duration.takeIf { it > 0 } ?: ((c.currentMediaItem?.toTrack()?.durationSeconds ?: 0) * 1000))
     }
     fun play(tracks: List<Track>, index: Int) {
         if (tracks.isEmpty() || index !in tracks.indices) return

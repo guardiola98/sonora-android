@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import org.sonora.music.domain.*
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import java.util.UUID
 
 @Entity(tableName = "tracks")
 data class LibraryTrack(
@@ -26,6 +27,8 @@ data class SavedPlaylist(@PrimaryKey(autoGenerate = true) val id: Long = 0, val 
         ForeignKey(entity = LibraryTrack::class, parentColumns = ["url"], childColumns = ["trackUrl"], onDelete = ForeignKey.CASCADE)],
     indices = [Index(value = ["trackUrl"]), Index(value = ["playlistId", "position"])])
 data class PlaylistEntry(val playlistId: Long, val trackUrl: String, val position: Int)
+@Entity(tableName = "playback_checkpoint")
+data class PlaybackCheckpoint(@PrimaryKey val id: Int = 1, val queueJson: String, val currentIndex: Int, val positionMs: Long)
 data class PlaylistSummary(@Embedded val playlist: SavedPlaylist, val trackCount: Int)
 
 @Dao
@@ -47,7 +50,7 @@ abstract class LibraryDao {
     open suspend fun recordPlay(track: Track, time: Long) {
         val old = find(track.url)
         put(LibraryTrack(track.url, track.title, track.artist, track.artwork, track.durationSeconds,
-            favorite = old?.favorite ?: false, lastPlayedAt = time, playCount = (old?.playCount ?: 0) + 1))
+            favorite = old?.favorite ?: false, lastPlayedAt = time, playCount = ((old?.playCount ?: 0).toLong() + 1).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()))
     }
     @Query("UPDATE tracks SET lastPlayedAt = NULL, playCount = 0")
     protected abstract suspend fun resetHistory()
@@ -68,6 +71,69 @@ abstract class LibraryDao {
     @Query("DELETE FROM playlists WHERE id = :id") protected abstract suspend fun deletePlaylistRow(id: Long)
     @Transaction open suspend fun deletePlaylist(id: Long) { deletePlaylistRow(id); prune() }
 
+    @Query("SELECT * FROM playlists WHERE id = :id") abstract suspend fun playlist(id: Long): SavedPlaylist?
+    @Query("UPDATE playlists SET name = :name WHERE id = :id") protected abstract suspend fun renameRow(id: Long, name: String)
+    @Query("DELETE FROM playlist_entries WHERE playlistId = :id AND trackUrl = :url") protected abstract suspend fun removeEntry(id: Long, url: String)
+    @Update protected abstract suspend fun updateEntries(entries: List<PlaylistEntry>)
+    @Transaction open suspend fun createPlaylist(name: String): Long {
+        return addPlaylist(SavedPlaylist(sourceKey = "local:${UUID.randomUUID()}", name = validName(name), importedAt = System.currentTimeMillis()))
+    }
+    @Transaction open suspend fun createPlaylistWithTracks(name: String, tracks: List<Track>): Long {
+        val id = createPlaylist(name)
+        addToPlaylist(id, tracks)
+        return id
+    }
+    @Transaction open suspend fun renamePlaylist(id: Long, name: String) { require(playlist(id) != null); renameRow(id, validName(name)) }
+    @Transaction open suspend fun addToPlaylist(id: Long, tracks: List<Track>) {
+        val list = requireNotNull(playlist(id)) { "Playlist no longer exists." }
+        importCollections(listOf(ImportSelection(ImportCollection(list.sourceKey, list.name, tracks), true, false)), System.currentTimeMillis())
+    }
+    @Transaction open suspend fun removeFromPlaylist(id: Long, url: String) { removeEntry(id, url); prune() }
+    @Transaction open suspend fun reorderPlaylist(id: Long, order: List<String>) {
+        val current = entries(id)
+        // Entries added by a concurrent import are kept at the end; removed entries stay removed.
+        val byUrl = current.associateBy { it.trackUrl }
+        val orderedUrls = order.toSet()
+        val reordered = (order.distinct().mapNotNull { byUrl[it] } + current.filter { it.trackUrl !in orderedUrls })
+        updateEntries(reordered.mapIndexed { index, entry -> entry.copy(position = index) })
+    }
+    private fun validName(name: String): String = name.trim().also { require(it.isNotEmpty() && it.length <= 180) { "Use a playlist name of 1–180 characters." } }
+
+    @Query("SELECT * FROM tracks WHERE favorite = 1 OR lastPlayedAt IS NOT NULL OR url IN (SELECT trackUrl FROM playlist_entries)")
+    protected abstract suspend fun backupTracks(): List<LibraryTrack>
+    @Query("SELECT * FROM playlists ORDER BY id") protected abstract suspend fun allPlaylists(): List<SavedPlaylist>
+    @Transaction open suspend fun exportBackup(): LibraryBackup {
+        val tracks = backupTracks().filter { YouTubeLinks.track(it.url) == it.url }
+        val urls = tracks.map { it.url }.toSet()
+        return LibraryBackup(System.currentTimeMillis(), tracks, allPlaylists().map { list ->
+            BackupPlaylist(list.sourceKey, list.name, entries(list.id).map { it.trackUrl }.filter { it in urls })
+        })
+    }
+    @Transaction open suspend fun restoreBackup(backup: LibraryBackup): RestoreSummary {
+        var tracks = 0; var favorites = 0
+        for (record in backup.tracks) {
+            currentCoroutineContext().ensureActive()
+            val old = find(record.url)
+            if (old == null) tracks++
+            if (record.favorite && old?.favorite != true) favorites++
+            put(record.copy(
+                title = if (YouTubeLinks.needsDetails(record.track()) && old != null) old.title else record.title,
+                artwork = record.artwork.ifBlank { old?.artwork.orEmpty() },
+                favorite = record.favorite || old?.favorite == true,
+                lastPlayedAt = listOfNotNull(record.lastPlayedAt, old?.lastPlayedAt).maxOrNull(),
+                playCount = maxOf(record.playCount, old?.playCount ?: 0)))
+        }
+        val byUrl = backup.tracks.associateBy { it.url }
+        val result = importCollections(backup.playlists.map { list ->
+            ImportSelection(ImportCollection(list.key, list.name, list.tracks.map { byUrl.getValue(it).track() }), true, false)
+        }, System.currentTimeMillis())
+        return RestoreSummary(tracks, favorites, result.newPlaylists, result.addedEntries)
+    }
+    @Query("SELECT * FROM playback_checkpoint WHERE id = 1") abstract suspend fun checkpoint(): PlaybackCheckpoint?
+    @Upsert abstract suspend fun saveCheckpoint(checkpoint: PlaybackCheckpoint)
+    @Query("UPDATE playback_checkpoint SET currentIndex = :index, positionMs = :position WHERE id = 1")
+    abstract suspend fun saveQueuePosition(index: Int, position: Long): Int
+
     /** Merge only: importing likes never toggles existing hearts or touches play history. */
     @Transaction open suspend fun importCollections(selections: List<ImportSelection>, time: Long): ImportSummary {
         var newTracks = 0; var newFavorites = 0; var newPlaylists = 0; var addedEntries = 0
@@ -81,7 +147,7 @@ abstract class LibraryDao {
                 playlistId = if (existing == null) {
                     newPlaylists++; addPlaylist(SavedPlaylist(sourceKey = collection.key, name = collection.name, importedAt = time))
                 } else {
-                    updatePlaylist(existing.copy(name = collection.name, importedAt = time)); existing.id
+                    updatePlaylist(existing.copy(importedAt = time)); existing.id
                 }
             }
             val previous = playlistId?.let { entries(it) }.orEmpty()
@@ -108,5 +174,5 @@ abstract class LibraryDao {
     }
 
 }
-@Database(entities = [LibraryTrack::class, SavedPlaylist::class, PlaylistEntry::class], version = 2, exportSchema = true)
+@Database(entities = [LibraryTrack::class, SavedPlaylist::class, PlaylistEntry::class, PlaybackCheckpoint::class], version = 3, exportSchema = true)
 abstract class LibraryDatabase : RoomDatabase() { abstract fun library(): LibraryDao }

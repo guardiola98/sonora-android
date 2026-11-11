@@ -1,0 +1,99 @@
+package org.sonora.music.data
+
+import org.json.JSONArray
+import org.json.JSONObject
+import org.sonora.music.domain.*
+import java.io.InputStream
+import java.net.URI
+
+/** Versioned metadata only: never audio, cookies, credentials or signed stream URLs. */
+object BackupCodec {
+    const val MAX_BYTES = 32 * 1024 * 1024
+    private const val MAX_TRACKS = 50_000
+    fun read(input: InputStream): LibraryBackup {
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        while (true) {
+            if (Thread.currentThread().isInterrupted) throw java.io.InterruptedIOException("Backup cancelled")
+            val count = input.read(buffer)
+            if (count < 0) break
+            require(output.size() + count <= MAX_BYTES) { "Backup exceeds 32 MiB." }
+            output.write(buffer, 0, count)
+        }
+        val bytes = output.toByteArray()
+        require(bytes.size <= MAX_BYTES) { "Backup exceeds 32 MiB." }
+        return decode(bytes.toString(Charsets.UTF_8))
+    }
+    fun encode(backup: LibraryBackup): String {
+        require(backup.tracks.size <= MAX_TRACKS && backup.playlists.size <= 2_000 && backup.playlists.sumOf { it.tracks.size.toLong() } <= 100_000) { "Library exceeds supported backup limits." }
+        return JSONObject().apply {
+        put("format", "sonora-library"); put("version", 1); put("createdAt", backup.createdAt)
+        put("tracks", JSONArray().apply { backup.tracks.forEach { record -> put(trackJson(record.track()).apply {
+            put("favorite", record.favorite); put("lastPlayedAt", record.lastPlayedAt ?: JSONObject.NULL); put("playCount", record.playCount)
+        }) } })
+        put("playlists", JSONArray().apply { backup.playlists.forEach { list -> put(JSONObject().apply {
+            put("key", list.key); put("name", list.name); put("tracks", JSONArray(list.tracks))
+        }) } })
+    }.toString().also { require(it.toByteArray().size <= MAX_BYTES) { "Library exceeds the 32 MiB backup limit." } }
+    }
+    fun decode(text: String): LibraryBackup {
+        require(text.length <= MAX_BYTES) { "Backup exceeds supported size." }
+        var depth = 0; var quoted = false; var escaped = false
+        for (character in text) {
+            if (quoted) {
+                if (escaped) escaped = false
+                else if (character == '\\') escaped = true
+                else if (character == '"') quoted = false
+            } else when (character) {
+                '"' -> quoted = true
+                '{', '[' -> { depth++; require(depth <= 16) { "Backup is nested too deeply." } }
+                '}', ']' -> { depth--; require(depth >= 0) { "Invalid backup structure." } }
+            }
+        }
+        require(depth == 0 && !quoted) { "Incomplete backup." }
+        val json = JSONObject(text)
+        require(json.getString("format") == "sonora-library" && json.getInt("version") == 1) { "Unsupported Sonora backup version." }
+        val data = json.getJSONArray("tracks")
+        require(data.length() <= MAX_TRACKS) { "Backup exceeds 50,000 tracks." }
+        val tracks = (0 until data.length()).map { i ->
+            val row = data.getJSONObject(i); val t = parseTrack(row)
+            val played = if (row.isNull("lastPlayedAt")) null else row.getLong("lastPlayedAt").also { require(it >= 0) }
+            val count = row.getInt("playCount").also { require(it >= 0) }
+            LibraryTrack(t.url, t.title, t.artist, t.artwork, t.durationSeconds, row.getBoolean("favorite"), played, count)
+        }
+        require(tracks.map { it.url }.toSet().size == tracks.size) { "Duplicate track records in backup." }
+        val urls = tracks.map { it.url }.toSet()
+        val lists = json.getJSONArray("playlists")
+        require(lists.length() <= 2_000) { "Backup exceeds 2,000 playlists." }
+        var entries = 0
+        val playlists = (0 until lists.length()).map { i ->
+            val list = lists.getJSONObject(i)
+            val key = list.getString("key").also { require(it.length in 1..300) }
+            val name = list.getString("name").also { require(it.isNotBlank() && it.length <= 180) }
+            val ids = list.getJSONArray("tracks"); entries += ids.length()
+            require(entries <= 100_000) { "Backup exceeds 100,000 playlist entries." }
+            val references = (0 until ids.length()).map { ids.getString(it).also { url -> require(url in urls) { "Playlist references a missing track." } } }
+            require(references.distinct().size == references.size) { "Duplicate entries in a backup playlist." }
+            BackupPlaylist(key, name, references)
+        }
+        require(playlists.map { it.key }.distinct().size == playlists.size) { "Duplicate playlists in backup." }
+        return LibraryBackup(json.getLong("createdAt"), tracks, playlists)
+    }
+    internal fun trackJson(track: Track) = JSONObject().apply {
+        put("url", track.url); put("title", track.title); put("artist", track.artist)
+        put("artwork", track.artwork); put("durationSeconds", track.durationSeconds)
+    }
+    internal fun parseTrack(row: JSONObject): Track {
+        val url = row.getString("url")
+        require(YouTubeLinks.track(url) == url) { "Backup contains a noncanonical YouTube track reference." }
+        val title = row.getString("title").also { require(it.length <= 2_000) }
+        val artist = row.getString("artist").also { require(it.length <= 2_000) }
+        val duration = row.getLong("durationSeconds").also { require(it in 0..604_800) }
+        val artwork = row.optString("artwork").takeIf { value ->
+            runCatching { val uri = URI(value); uri.scheme == "https" && uri.userInfo == null && uri.port == -1 &&
+                (uri.host == "i.ytimg.com" || uri.host?.endsWith(".ytimg.com") == true || uri.host?.endsWith(".googleusercontent.com") == true || uri.host?.endsWith(".ggpht.com") == true)
+            }.getOrDefault(false)
+        }.orEmpty()
+        return Track(url, title, artist, artwork, duration)
+    }
+}

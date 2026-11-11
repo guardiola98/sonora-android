@@ -39,7 +39,7 @@ Record device/model, Android version, commit, APK SHA-256, network type and resu
 - [ ] Start another audio app / receive a call: audio focus follows Android policy. Test wired and Bluetooth headset removal: audio pauses rather than switching loudly to speakers.
 - [ ] Test Bluetooth media buttons for play/pause and skip.
 - [ ] Stop playback and remove the app from recents; no orphan playing service remains.
-- [ ] Force-stop / reboot: playback stops and the in-memory queue is cleared (documented beta scope).
+- [ ] Force-stop / reboot: playback stops. Reopening restores queue, selection and last checkpoint in pause; audio starts only after Play.
 
 ## Persistence and data
 
@@ -65,3 +65,13 @@ Attach only redacted logs when reporting failures. Audible output, physical head
 - [ ] Cancel during metadata lookup; no partial data is written. Rotate/navigate while importing; progress remains consistent. Force-stop before final save and verify no partial collections appear.
 - [ ] Try a private/removed playlist link, a malformed URL, an invalid CSV, duplicate IDs, oversized ZIP and unsupported HTML/JSON. Errors are actionable; no library data is lost.
 - [ ] Check large font, TalkBack and landscape on the preview, all destination chips, long playlist names and the import button at the bottom.
+
+## Beta 0.2 library and signed updates
+
+- [ ] Install two successive official APKs with the same pinned certificate using an in-place update. Favorites/history/playlists survive. Do not uninstall an incompatible old debug build without deciding how to preserve its data.
+- [ ] Export to local Downloads and to a document provider; cancel a picker without changes. Copy the file off-device, restore to a fresh install and compare favorites, all history, empty playlists and ordering.
+- [ ] Preview a backup without committing, cancel, then restore twice. Existing favorites stay on; history counts do not double; custom list names/order stay intact. Try truncated, unsupported-version and oversized backups.
+- [ ] Create/rename lists, add songs from Search/Home/Library/full player, create-and-add from the picker, remove songs and delete a list. Confirm favorites/history are retained.
+- [ ] Drag first/middle/last rows, scroll through a long list while dragging, cancel a drag, rotate and use TalkBack move up/down actions. Saved order must match the UI after reopening.
+- [ ] Pause and seek, force-stop the process, reopen offline: queue/index/position return without autoplay. Clear the queue, kill/reopen and confirm it stays empty. Reboot and repeat.
+- [ ] Repeat actual streaming, background notification and lock-screen checks on the signed release APK, not only debug.

@@ -16,3 +16,11 @@ captures/
 .externalNativeBuild/
 .cxx/
 .DS_Store
+
+# Local release credentials and publication staging
+.signing/
+signing.properties
+*.p12
+dist-release/
+.publish-worktree/
+__pycache__/

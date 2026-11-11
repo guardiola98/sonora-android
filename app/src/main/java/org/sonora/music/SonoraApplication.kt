@@ -6,7 +6,7 @@ import okhttp3.OkHttpClient
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.localization.Localization
 import org.sonora.music.data.*
-import org.sonora.music.domain.MusicSource
+import kotlinx.coroutines.*
 import org.sonora.music.playback.PlaybackStatus
 import java.util.concurrent.TimeUnit
 
@@ -20,8 +20,10 @@ class AppGraph(application: Application) {
     init { NewPipe.init(ExtractorDownloader(http), Localization("en", "GB")) }
     val source = NewPipeMusicSource()
     val streams = StreamResolver(source)
-    val database = Room.databaseBuilder(application, LibraryDatabase::class.java, "sonora.db").addMigrations(DatabaseMigrations.FROM_1_TO_2).build()
+    val database = Room.databaseBuilder(application, LibraryDatabase::class.java, "sonora.db").addMigrations(DatabaseMigrations.FROM_1_TO_2, DatabaseMigrations.FROM_2_TO_3).build()
     val library = database.library()
     val importer = ImportRepository(source, library)
     val playbackStatus = PlaybackStatus()
+    private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val queueStore = PlaybackQueueStore(library, persistenceScope) { playbackStatus.report("Queue could not be saved. Check available storage.") }
 }

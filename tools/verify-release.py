@@ -23,9 +23,9 @@ def sdk_path():
 def verify(apk):
     build_tools = sdk_path() / 'build-tools' / '35.0.0'
     result = subprocess.run([str(build_tools / 'apksigner'), 'verify', '--print-certs', str(apk)], check=True, capture_output=True, text=True)
-    match = re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)', result.stdout)
+    signers = re.findall(r'Signer #\d+ certificate SHA-256 digest: ([0-9a-fA-F]+)', result.stdout)
     expected = (ROOT / 'signing/certificate.sha256').read_text().strip().lower()
-    if not match or match[1].lower() != expected:
+    if [signer.lower() for signer in signers] != [expected]:
         raise SystemExit('The APK does not use the pinned Sonora release certificate.')
     manifest = subprocess.run([str(build_tools / 'aapt'), 'dump', 'badging', str(apk)], check=True, capture_output=True, text=True).stdout
     if 'application-debuggable' in manifest:

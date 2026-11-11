@@ -23,6 +23,7 @@ import org.sonora.music.discovery.*
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
     private val graph = app.graph
+    val updates = graph.updates
     private val mutableMessage = MutableStateFlow<String?>(null)
     val search = SearchPresenter(graph.source, viewModelScope, graph.searchRepository)
     val playback = PlaybackConnection(app, viewModelScope, graph.playbackStatus, graph.streams, graph.podcastLibrary, graph.preparation)

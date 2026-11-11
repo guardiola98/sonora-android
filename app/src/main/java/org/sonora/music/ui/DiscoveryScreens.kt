@@ -45,7 +45,31 @@ val LocalDiscoveryActions = staticCompositionLocalOf { DiscoveryActions() }
         DropdownMenuItem(text = { Text("Why this / music details") }, onClick = { close(); actions.explain(track) })
     }
 }
-@Composable fun AutoplayControl() {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun AutoplayControl(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val description = if (checked) "Autoplay on" else "Autoplay off"
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = { PlainTooltip { Text(description) } },
+        state = rememberTooltipState(),
+    ) {
+        IconToggleButton(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier.size(48.dp).semantics { contentDescription = "Autoplay" },
+            colors = IconButtonDefaults.iconToggleButtonColors(
+                contentColor = colors.onSurfaceVariant,
+                checkedContainerColor = colors.primary.copy(alpha = 0.14f),
+                checkedContentColor = colors.primary,
+            ),
+        ) {
+            Icon(Icons.Rounded.AllInclusive, contentDescription = null)
+        }
+    }
+}
+@Composable internal fun QueueAutoplayControl() {
     val actions = LocalDiscoveryActions.current
     Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {

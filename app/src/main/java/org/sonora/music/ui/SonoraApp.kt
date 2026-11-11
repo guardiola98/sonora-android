@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.media3.common.util.UnstableApi
 import coil3.compose.AsyncImage
+import org.sonora.music.BuildConfig
 import org.sonora.music.data.PlaylistSummary
 import org.sonora.music.domain.Track
 import org.sonora.music.domain.formatDuration
@@ -73,6 +74,7 @@ import org.sonora.music.playback.PlayerSnapshot
     var showPlayer by rememberSaveable { mutableStateOf(false) }
     var showQueue by rememberSaveable { mutableStateOf(false) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
+    var showUpdates by rememberSaveable { mutableStateOf(false) }
     val candidates = if (showPlayer || showImport || showBackup || !preparationEnabled) emptyList() else if (collectionState.entry != null) collectionState.tracks.take(2) else when (tab) {
         0 -> (history.ifEmpty { favorites }).take(2).map { it.track() }
         1 -> search.tracks.take(2)
@@ -149,7 +151,7 @@ import org.sonora.music.playback.PlayerSnapshot
                     }
                     TextButton(onClick = { vm.playback.clear(); showQueue = false }, enabled = player.queue.isNotEmpty()) { Text("Clear queue") }
                 }
-                AutoplayControl()
+                QueueAutoplayControl()
                 if (!radio.active) Text("Manual queue: no automatic tracks will be added.", Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodySmall)
                 radio.notice?.let { Text(it, Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodySmall); TextButton(onClick = vm.playback::retryRadio) { Text("Retry radio") } }
                 LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -170,7 +172,11 @@ import org.sonora.music.playback.PlayerSnapshot
                 }
             }
         }
-        if (showAbout) AboutDialog(preparationEnabled, vm::setPreparationEnabled, { showAbout = false; showDiscoverySettings = true }) { showAbout = false }
+        if (showAbout) AboutDialog(preparationEnabled, vm::setPreparationEnabled,
+            onDiscovery = { showAbout = false; showDiscoverySettings = true },
+            onUpdates = { showAbout = false; showUpdates = true },
+        ) { showAbout = false }
+        if (showUpdates) UpdatesDialog(vm.updates) { showUpdates = false; showAbout = true }
         if (showDiscoverySettings) DiscoverySettingsDialog(vm) { showDiscoverySettings = false }
         if (collectionState.entry != null) DiscoveryCollection(vm, collectionState, favoriteIds, player.connected)
         explainedTrack?.let { track -> RecommendationDetails(track, homeDiscovery.recommendations.firstOrNull { it.track.url == track.url }, enrichedMetadata[track.url], radio.automatic[track.url]) { explainedTrack = null } }
@@ -234,69 +240,82 @@ import org.sonora.music.playback.PlayerSnapshot
     }
 }
 
-@Composable private fun FullPlayer(player: PlayerSnapshot, error: String?, favorite: Boolean, onClose: () -> Unit, onFavorite: () -> Unit,
+@OptIn(ExperimentalLayoutApi::class)
+@Composable internal fun FullPlayer(player: PlayerSnapshot, error: String?, favorite: Boolean, onClose: () -> Unit, onFavorite: () -> Unit,
     onToggle: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onSeek: (Long) -> Unit, onSpeed: (Float) -> Unit, onQueue: () -> Unit, onRetry: () -> Unit) {
     val track = player.current ?: return
     val addToPlaylist = LocalAddToPlaylist.current
     var drag by remember(track.url) { mutableStateOf<Float?>(null) }
-    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Close player") }
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("NOW PLAYING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
-                Text(if (LocalDiscoveryActions.current.radioState.active) "Sonora radio" else "Your queue", style = MaterialTheme.typography.titleSmall)
-            }
-            IconButton(onClick = onQueue) { Icon(Icons.AutoMirrored.Rounded.QueueMusic, "Open queue") }
-        }
-        Column(Modifier.widthIn(max = 500.dp).fillMaxWidth().padding(horizontal = 32.dp, vertical = 20.dp)) {
-            Artwork(track, Modifier.fillMaxWidth().aspectRatio(1f), large = true)
-            Spacer(Modifier.height(28.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(track.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                    Spacer(Modifier.height(8.dp))
-                    Text(track.artist, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+        val artworkSize = minOf(maxHeight * 0.36f, (maxWidth - 40.dp).coerceAtLeast(1.dp), 400.dp)
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Close player") }
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("NOW PLAYING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    Text(if (LocalDiscoveryActions.current.radioState.active) "Sonora radio" else "Your queue", style = MaterialTheme.typography.titleSmall)
                 }
-                IconButton(onClick = onFavorite) { Icon(if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (favorite) "Remove from favorites" else "Add to favorites", tint = MaterialTheme.colorScheme.primary) }
+                IconButton(onClick = onQueue) { Icon(Icons.AutoMirrored.Rounded.QueueMusic, "Open queue") }
             }
-            TextButton(onClick = { addToPlaylist(track) }) { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null); Text("Add to playlist") }
-            if (!org.sonora.music.domain.PodcastLinks.isEpisode(track.url)) {
+            Column(Modifier.widthIn(max = 500.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+                Artwork(track, Modifier.align(Alignment.CenterHorizontally).size(artworkSize), large = true)
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(track.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.height(8.dp))
+                        Text(track.artist, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                    IconButton(onClick = onFavorite) { Icon(if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (favorite) "Remove from favorites" else "Add to favorites", tint = MaterialTheme.colorScheme.primary) }
+                }
                 val actions = LocalDiscoveryActions.current
-                Row { TextButton(onClick = { actions.radio(track) }) { Text("Start radio") }; TextButton(onClick = { actions.explain(track) }) { Text("Music details") } }
-                AutoplayControl()
-            }
-            Spacer(Modifier.height(20.dp))
-            Slider(value = drag ?: player.positionMs.toFloat().coerceIn(0f, player.durationMs.coerceAtLeast(1).toFloat()),
-                onValueChange = { drag = it }, onValueChangeFinished = { drag?.let { onSeek(it.toLong()) }; drag = null },
-                valueRange = 0f..player.durationMs.coerceAtLeast(1).toFloat(), enabled = player.durationMs > 0)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(formatDuration((drag?.toLong() ?: player.positionMs) / 1000), style = MaterialTheme.typography.labelMedium)
-                Text(formatDuration(player.durationMs / 1000), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Row(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous track or restart", Modifier.size(36.dp)) }
-                FilledIconButton(onClick = onToggle, modifier = Modifier.size(80.dp)) { Icon(if (player.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (player.playing) "Pause" else "Play", Modifier.size(42.dp)) }
-                IconButton(onClick = onNext, enabled = player.index < player.queue.lastIndex, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipNext, "Next track", Modifier.size(36.dp)) }
-            }
-            if (org.sonora.music.domain.PodcastLinks.isEpisode(track.url)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    OutlinedButton(onClick = { onSeek((player.positionMs - 15_000).coerceAtLeast(0)) }) { Text("−15 sec") }
-                    var speedMenu by remember { mutableStateOf(false) }
-                    Box {
-                        OutlinedButton(onClick = { speedMenu = true }) { Text("${player.speed}×") }
-                        DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
-                            listOf(0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
-                                DropdownMenuItem(text = { Text("${speed}×") }, onClick = { onSpeed(speed); speedMenu = false })
+                val isMusic = !org.sonora.music.domain.PodcastLinks.isEpisode(track.url)
+                FlowRow {
+                    if (isMusic) AutoplayControl(actions.autoplay, actions.setAutoplay)
+                    TextButton(onClick = { addToPlaylist(track) }) {
+                        Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Add to playlist")
+                    }
+                    if (isMusic) {
+                        TextButton(onClick = { actions.radio(track) }) { Text("Start radio") }
+                        TextButton(onClick = { actions.explain(track) }) { Text("Music details") }
+                    }
+                }
+                if (isMusic && actions.radioState.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                Slider(value = drag ?: player.positionMs.toFloat().coerceIn(0f, player.durationMs.coerceAtLeast(1).toFloat()),
+                    onValueChange = { drag = it }, onValueChangeFinished = { drag?.let { onSeek(it.toLong()) }; drag = null },
+                    valueRange = 0f..player.durationMs.coerceAtLeast(1).toFloat(), enabled = player.durationMs > 0)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(formatDuration((drag?.toLong() ?: player.positionMs) / 1000), style = MaterialTheme.typography.labelMedium)
+                    Text(formatDuration(player.durationMs / 1000), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous track or restart", Modifier.size(36.dp)) }
+                    FilledIconButton(onClick = onToggle, modifier = Modifier.size(80.dp)) { Icon(if (player.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (player.playing) "Pause" else "Play", Modifier.size(42.dp)) }
+                    IconButton(onClick = onNext, enabled = player.index < player.queue.lastIndex, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipNext, "Next track", Modifier.size(36.dp)) }
+                }
+                if (org.sonora.music.domain.PodcastLinks.isEpisode(track.url)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        OutlinedButton(onClick = { onSeek((player.positionMs - 15_000).coerceAtLeast(0)) }) { Text("−15 sec") }
+                        var speedMenu by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(onClick = { speedMenu = true }) { Text("${player.speed}×") }
+                            DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
+                                listOf(0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
+                                    DropdownMenuItem(text = { Text("${speed}×") }, onClick = { onSpeed(speed); speedMenu = false })
+                                }
                             }
                         }
+                        OutlinedButton(onClick = { onSeek((player.positionMs + 30_000).coerceAtMost(player.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)) }) { Text("+30 sec") }
                     }
-                    OutlinedButton(onClick = { onSeek((player.positionMs + 30_000).coerceAtMost(player.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)) }) { Text("+30 sec") }
                 }
-            }
-            if (player.buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
-            error?.let { ErrorBanner(it, onRetry) }
-            TextButton(onClick = onQueue, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Icon(Icons.AutoMirrored.Rounded.QueueMusic, null); Spacer(Modifier.width(8.dp)); Text("Queue · ${player.index + 1} of ${player.queue.size}")
+                if (player.buffering) LinearProgressIndicator(Modifier.fillMaxWidth())
+                error?.let { ErrorBanner(it, onRetry) }
+                TextButton(onClick = onQueue, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, null); Spacer(Modifier.width(8.dp)); Text("Queue · ${player.index + 1} of ${player.queue.size}")
+                }
             }
         }
     }
@@ -325,9 +344,9 @@ import org.sonora.music.playback.PlayerSnapshot
         if (action != null) TextButton(onClick = onClick) { Text(action) }
     }
 }
-@Composable private fun AboutDialog(preparationEnabled: Boolean, onPreparationChanged: (Boolean) -> Unit, onDiscovery: () -> Unit, onDismiss: () -> Unit) {
+@Composable private fun AboutDialog(preparationEnabled: Boolean, onPreparationChanged: (Boolean) -> Unit, onDiscovery: () -> Unit, onUpdates: () -> Unit, onDismiss: () -> Unit) {
     val uri = LocalUriHandler.current
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora 0.5 beta 1") },
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora ${BuildConfig.VERSION_NAME}") },
         text = { Column(Modifier.verticalScroll(rememberScrollState())) {
             Text("An independent, open-source music and podcast player. Built with NewPipeExtractor and Android Media3. Not affiliated with YouTube or Google.")
             Spacer(Modifier.height(12.dp))
@@ -340,6 +359,7 @@ import org.sonora.music.playback.PlayerSnapshot
                 }
                 Switch(checked = preparationEnabled, onCheckedChange = onPreparationChanged)
             }
+            TextButton(onClick = onUpdates) { Text("Updates") }
             TextButton(onClick = onDiscovery) { Text("Discovery & autoplay settings") }
             TextButton(onClick = { uri.openUri("https://github.com/guardiola98/sonora-android") }) { Text("Source code & licenses") }
         } }, confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })

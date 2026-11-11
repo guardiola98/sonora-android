@@ -26,3 +26,5 @@ Library backups are created only when you choose Export library and a document d
 No storage, microphone, location or account permission is requested. Internet, network-state, foreground media service and wake-lock permissions support streaming and background playback. Android media-session notifications are exempt from the Android 13 notification runtime permission, so Sonora does not request unrelated notification access.
 
 The beta does not collect diagnostic logs remotely. If reporting a bug, avoid including signed stream URLs, private information or an unredacted full device log.
+
+Sonora 0.6 and later checks the public Sonora release manifest on GitHub when checking for updates. Release builds make this request periodically. The official APK is requested when you choose to download it. These requests do not include library, history or playback data.

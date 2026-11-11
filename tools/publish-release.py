@@ -47,6 +47,12 @@ with tempfile.TemporaryDirectory(prefix='sonora-publish-') as temporary:
         git('checkout', '-B', branch, 'FETCH_HEAD', cwd=destination)
     for field in ('user.name', 'user.email'):
         git('config', field, git('config', field), cwd=destination)
+    latest = destination / 'latest.json'
+    if latest.is_file() and metadata['versionCode'] <= json.loads(latest.read_text())['versionCode']:
+        raise SystemExit('The release versionCode must exceed the published versionCode.')
+    notes = ROOT / 'docs/release-notes' / (version + '.md')
+    metadata['notes'] = notes.read_text(encoding='utf-8').strip() if notes.is_file() else ''
+    metadata['sizeBytes'] = apk.stat().st_size
     release = destination / 'releases' / version
     if release.exists():
         raise SystemExit('This version is already published. Increment the app version; do not replace releases.')
@@ -58,7 +64,7 @@ with tempfile.TemporaryDirectory(prefix='sonora-publish-') as temporary:
         shutil.copy2(ROOT / name, release / name)
     (release / 'SHA256SUMS').write_text(metadata['sha256'] + '  ' + filename + '\n')
     (release / 'release.json').write_text(json.dumps(metadata, indent=2) + '\n')
-    (destination / 'latest.json').write_text(json.dumps(metadata | {'apk': 'releases/' + version + '/' + filename}, indent=2) + '\n')
+    latest.write_text(json.dumps(metadata | {'apk': 'releases/' + version + '/' + filename}, indent=2) + '\n')
     url = 'https://github.com/guardiola98/sonora-android/raw/refs/heads/' + branch + '/releases/' + version + '/' + filename
     (destination / 'README.md').write_text('# Sonora signed APKs\n\n[Download ' + version + '](' + url + ')\n\n'
         'This branch distributes APKs signed with Sonora’s persistent release key. The private key is never stored here. '

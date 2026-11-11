@@ -19,8 +19,11 @@ android {
         applicationId = "org.sonora.music"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.5.0-beta01"
+        versionCode = 7
+        versionName = "0.6.0-beta01"
+        val releaseCertificate = rootProject.file("signing/certificate.sha256").readText().trim()
+        require(releaseCertificate.matches(Regex("[0-9a-f]{64}")))
+        buildConfigField("String", "OFFICIAL_CERTIFICATE_SHA256", "\"$releaseCertificate\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -70,6 +73,7 @@ dependencies {
     implementation(libs.coroutines.android)
     implementation(libs.newpipe)
     implementation(libs.okhttp)
+    implementation(libs.work.runtime)
     implementation(libs.coil.compose)
     implementation(libs.coil.network)
     coreLibraryDesugaring(libs.desugar)
@@ -77,6 +81,9 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    debugImplementation(libs.compose.test.host)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.testing)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.ktx)

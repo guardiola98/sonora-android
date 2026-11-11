@@ -13,14 +13,21 @@ import org.sonora.music.playback.AudioPrefixCache
 import org.sonora.music.playback.PlaybackPreparation
 import androidx.media3.common.util.UnstableApi
 import java.util.concurrent.TimeUnit
+import org.sonora.music.update.SonoraUpdates
+import org.sonora.music.update.UpdateCheckWorker
 
 @UnstableApi
 class SonoraApplication : Application() {
     val graph by lazy { AppGraph(this) }
-    override fun onCreate() { super.onCreate(); graph }
+    override fun onCreate() {
+        super.onCreate()
+        graph
+        if (!BuildConfig.DEBUG) UpdateCheckWorker.schedule(this)
+    }
 }
 @UnstableApi
 class AppGraph(application: Application) {
+    val updates = SonoraUpdates(application)
     private val http = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(25, TimeUnit.SECONDS).callTimeout(40, TimeUnit.SECONDS).build()
     init { NewPipe.init(ExtractorDownloader(http), Localization("en", "GB")) }

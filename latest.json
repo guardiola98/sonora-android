@@ -1,8 +1,10 @@
 {
-  "version": "0.5.0-beta01",
-  "versionCode": 6,
-  "sha256": "cb9c0370c0cb39e22910571eb007ac0707a8aef63a5616a757a0fcc927ac1ff8",
+  "version": "0.6.0-beta01",
+  "versionCode": 7,
+  "sha256": "c69c1a61dac4e2d00b9681fb68429101743ca030cf150184929c2291516ac844",
   "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2",
-  "sourceCommit": "e5cf2215f180abb1190f61f4caf8e8449a1cb130",
-  "apk": "releases/0.5.0-beta01/sonora-0.5.0-beta01.apk"
+  "sourceCommit": "e516dd773a77f8f5acbe69042052800d890d1436",
+  "notes": "\u2022 Check for new versions in About \u2192 Updates. Download and verify the official APK from inside Sonora, then confirm the update in Android.\n\u2022 Toggle Autoplay from the infinity icon in Now Playing. Artwork and action rows adapt to smaller displays.",
+  "sizeBytes": 17459090,
+  "apk": "releases/0.6.0-beta01/sonora-0.6.0-beta01.apk"
 }

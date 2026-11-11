@@ -24,7 +24,11 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
     private val graph = app.graph
     private val mutableMessage = MutableStateFlow<String?>(null)
     val search = SearchPresenter(graph.source, viewModelScope)
-    val playback = PlaybackConnection(app, viewModelScope, graph.playbackStatus, graph.streams, graph.podcastLibrary)
+    val playback = PlaybackConnection(app, viewModelScope, graph.playbackStatus, graph.streams, graph.podcastLibrary, graph.preparation)
+    val preparationEnabled = graph.preparation.enabled
+    fun setPreparationEnabled(enabled: Boolean) = graph.preparation.setEnabled(enabled)
+    fun prepareBrowsing(tracks: List<Track>) = graph.preparation.browse(tracks.map { it.url })
+    fun stopBrowsingPreparation() = graph.preparation.cancelBrowse()
     val playerError = graph.playbackStatus.error
     val podcasts = PodcastPresenter(graph.podcasts, graph.podcastLibrary, playback, viewModelScope)
     val importer = ImportPresenter(graph.importer, viewModelScope)

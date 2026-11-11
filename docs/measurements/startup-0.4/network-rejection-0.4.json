@@ -1,0 +1,55 @@
+{
+  "version": "0.4.0-beta01",
+  "track": "https:\/\/www.youtube.com\/watch?v=sMcWOaJFuw0",
+  "results": [
+    {
+      "mode": "cold",
+      "trial": 1,
+      "startupMs": 2558,
+      "preparationMs": 0,
+      "error": null
+    },
+    {
+      "mode": "cold",
+      "trial": 2,
+      "startupMs": 1914,
+      "preparationMs": 0,
+      "error": null
+    },
+    {
+      "mode": "cold",
+      "trial": 3,
+      "startupMs": 2188,
+      "preparationMs": 0,
+      "error": null
+    },
+    {
+      "mode": "resolved",
+      "trial": 1,
+      "startupMs": 934,
+      "preparationMs": 721,
+      "error": null
+    },
+    {
+      "mode": "resolved",
+      "trial": 2,
+      "startupMs": 944,
+      "preparationMs": 1498,
+      "error": null
+    },
+    {
+      "mode": "resolved",
+      "trial": 3,
+      "startupMs": 937,
+      "preparationMs": 1411,
+      "error": null
+    },
+    {
+      "mode": "prepared",
+      "trial": 1,
+      "startupMs": 125,
+      "preparationMs": 1831,
+      "error": null
+    }
+  ]
+}

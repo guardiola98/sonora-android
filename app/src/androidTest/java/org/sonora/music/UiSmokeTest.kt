@@ -16,6 +16,7 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 @UnstableApi
 class UiSmokeTest {
+    @get:org.junit.Rule val noSpeculation = SpeculationDisabledRule()
     @Test fun bottomNavigationRendersAllFourScreens() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         ActivityScenario.launch(MainActivity::class.java).use {

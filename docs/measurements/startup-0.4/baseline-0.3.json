@@ -1,0 +1,48 @@
+{
+  "version": "0.3.0-beta01",
+  "track": "https:\/\/www.youtube.com\/watch?v=sMcWOaJFuw0",
+  "results": [
+    {
+      "mode": "cold",
+      "trial": 1,
+      "startupMs": 2768,
+      "preparationMs": 0,
+      "error": null
+    },
+    {
+      "mode": "cold",
+      "trial": 2,
+      "startupMs": 2817,
+      "preparationMs": 0,
+      "error": null
+    },
+    {
+      "mode": "cold",
+      "trial": 3,
+      "startupMs": 2194,
+      "preparationMs": 0,
+      "error": null
+    },
+    {
+      "mode": "resolved",
+      "trial": 1,
+      "startupMs": 1273,
+      "preparationMs": 1197,
+      "error": null
+    },
+    {
+      "mode": "resolved",
+      "trial": 2,
+      "startupMs": 1258,
+      "preparationMs": 1011,
+      "error": null
+    },
+    {
+      "mode": "resolved",
+      "trial": 3,
+      "startupMs": 1289,
+      "preparationMs": 1091,
+      "error": null
+    }
+  ]
+}

@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.media3.common.util.UnstableApi
 import coil3.compose.AsyncImage
 import org.sonora.music.data.PlaylistSummary
@@ -58,11 +59,24 @@ import org.sonora.music.playback.PlayerSnapshot
     val backup by vm.backup.collectAsStateWithLifecycle()
     val playerError by vm.playerError.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
+    val preparationEnabled by vm.preparationEnabled.collectAsStateWithLifecycle()
+    val podcastState by vm.podcasts.state.collectAsStateWithLifecycle()
     val favoriteIds = remember(favorites) { favorites.map { it.url }.toSet() }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showPlayer by rememberSaveable { mutableStateOf(false) }
     var showQueue by rememberSaveable { mutableStateOf(false) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
+    val candidates = if (showPlayer || showImport || showBackup || !preparationEnabled) emptyList() else when (tab) {
+        0 -> (history.ifEmpty { favorites }).take(2).map { it.track() }
+        1 -> search.tracks.take(2)
+        2 -> (if (selectedPlaylist == null) favorites else playlistTracks.second).take(2).map { it.track() }
+        3 -> podcastState.show?.let { show -> podcastState.episodes.take(2).map { it.track(show) } }.orEmpty()
+        else -> emptyList()
+    }
+    LifecycleResumeEffect(candidates) {
+        vm.prepareBrowsing(candidates)
+        onPauseOrDispose { vm.stopBrowsingPreparation() }
+    }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); vm.dismissMessage() } }
     LaunchedEffect(player.current) { if (player.current == null) showPlayer = false }
@@ -143,7 +157,7 @@ import org.sonora.music.playback.PlayerSnapshot
                 }
             }
         }
-        if (showAbout) AboutDialog { showAbout = false }
+        if (showAbout) AboutDialog(preparationEnabled, vm::setPreparationEnabled) { showAbout = false }
         addTrack?.let { track -> AddToPlaylistDialog(track, playlists, { addTrack = null },
             { id -> vm.addToPlaylist(id, track) { addTrack = null } },
             { name -> vm.createPlaylist(name, track) { addTrack = null } }) }
@@ -371,13 +385,21 @@ import org.sonora.music.playback.PlayerSnapshot
         if (action != null) TextButton(onClick = onClick) { Text(action) }
     }
 }
-@Composable private fun AboutDialog(onDismiss: () -> Unit) {
+@Composable private fun AboutDialog(preparationEnabled: Boolean, onPreparationChanged: (Boolean) -> Unit, onDismiss: () -> Unit) {
     val uri = LocalUriHandler.current
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora 0.3 beta 1") },
-        text = { Column {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Sonora 0.4 beta 1") },
+        text = { Column(Modifier.verticalScroll(rememberScrollState())) {
             Text("An independent, open-source music and podcast player. Built with NewPipeExtractor and Android Media3. Not affiliated with YouTube or Google.")
             Spacer(Modifier.height(12.dp))
             Text("GPL-3.0-or-later. No accounts, ads or analytics. Favorites and history stay on this device. Streaming sends requests to YouTube, podcast publishers and image hosts. Podcast search uses Apple’s public directory.")
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Faster playback starts", style = MaterialTheme.typography.titleSmall)
+                    Text("Prepare likely tracks and the next in your queue. Uses extra data.", style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = preparationEnabled, onCheckedChange = onPreparationChanged)
+            }
             TextButton(onClick = { uri.openUri("https://github.com/guardiola98/sonora-android") }) { Text("Source code & licenses") }
         } }, confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })
 }

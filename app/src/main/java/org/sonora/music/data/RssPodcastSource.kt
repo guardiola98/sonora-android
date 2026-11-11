@@ -2,8 +2,6 @@ package org.sonora.music.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -13,8 +11,7 @@ import java.io.IOException
 import java.util.Locale
 
 class RssPodcastSource(private val http: OkHttpClient) : PodcastSource {
-    private val mutex = Mutex()
-    private val cache = mutableMapOf<String, Pair<Long, PodcastFeed>>()
+    private val cache = SingleFlightCache<String, PodcastFeed>(8, 5 * 60_000)
     private var searchTime = 0L
     override suspend fun search(query: String): List<PodcastShow> = runInterruptible(Dispatchers.IO) {
         val term = query.trim().also { require(it.length in 2..200) { "Enter 2–200 characters to search podcasts." } }
@@ -35,14 +32,12 @@ class RssPodcastSource(private val http: OkHttpClient) : PodcastSource {
             PodcastShow(feed, row.optString("collectionName").take(2000), row.optString("artistName").take(2000))
         }.distinctBy { it.feedUrl }
     }
-    override suspend fun feed(url: String, refresh: Boolean): PodcastFeed = mutex.withLock {
+    override suspend fun feed(url: String, refresh: Boolean): PodcastFeed {
         val canonical = requireNotNull(PodcastLinks.https(url)) { "Use a public HTTPS RSS feed URL." }
-        val now = System.currentTimeMillis()
-        if (!refresh) cache[canonical]?.takeIf { now - it.first < 5 * 60_000 }?.let { return@withLock it.second }
-        val result = runInterruptible(Dispatchers.IO) { PodcastFeedParser.parse(download(canonical, PodcastFeedParser.MAX_BYTES), canonical) }
-        if (cache.size >= 8) cache.remove(cache.keys.first())
-        cache[canonical] = now to result
-        result
+        if (refresh) cache.invalidate(canonical)
+        return cache.get(canonical) {
+            runInterruptible(Dispatchers.IO) { PodcastFeedParser.parse(download(canonical, PodcastFeedParser.MAX_BYTES), canonical) }
+        }
     }
     override suspend fun resolve(reference: String): AudioStream {
         val (url, _) = requireNotNull(PodcastLinks.parse(reference)) { "Invalid podcast episode." }
@@ -50,7 +45,7 @@ class RssPodcastSource(private val http: OkHttpClient) : PodcastSource {
             ?: throw IOException("This episode is no longer in the publisher's RSS feed.")
         return AudioStream(episode.audioUrl)
     }
-    override suspend fun invalidate(reference: String) { mutex.withLock { PodcastLinks.parse(reference)?.let { cache.remove(it.first) }; Unit } }
+    override suspend fun invalidate(reference: String) { PodcastLinks.parse(reference)?.let { cache.invalidate(it.first) } }
     private fun download(url: String, limit: Int): ByteArray {
         val request = Request.Builder().url(url).header("User-Agent", "Sonora/${org.sonora.music.BuildConfig.VERSION_NAME} (Android; public RSS podcast client)").build()
         return http.newCall(request).execute().use { response ->

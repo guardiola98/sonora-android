@@ -24,6 +24,7 @@ import java.io.File
 @UnstableApi
 @RunWith(AndroidJUnit4::class)
 class PodcastDeviceTest {
+    @get:org.junit.Rule val noSpeculation = SpeculationDisabledRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private fun main(block: () -> Unit) = instrumentation.runOnMainSync(block)

@@ -4,7 +4,7 @@
 
 An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account, API key, ads or analytics.
 
-**Version: 0.3.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
+**Version: 0.4.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
 <p>
   <img src="docs/screenshots/home.png" width="220" alt="Sonora home on Android 15" />
@@ -18,13 +18,13 @@ Actual emulator screenshots: Home/Search from 0.1-beta01, the import preview fro
 
 ## Install
 
-Download the [signed Sonora 0.3 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.3.0-beta01/sonora-0.3.0-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
+Download the [signed Sonora 0.4 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.4.0-beta01/sonora-0.4.0-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
 
 This release uses a **persistent signing key**. Future releases using this key can update it without uninstalling or clearing the library. Earlier **debug** builds can have different certificates and cannot necessarily be upgraded in place. Do not uninstall an older build with data you need unless you have a usable backup. A new signing key cannot grant access to another application's private data. See [release signing and upgrade notes](docs/RELEASING.md).
 
 Android may ask you to allow installation from the app opening the APK. Search for a song or use **Library → Import music** for YouTube Music playlists/likes. Use **Library → Backup and restore** to save a copy outside the app before changing phones or uninstalling.
 
-GitHub Actions also builds a `sonora-0.3.0-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
+GitHub Actions also builds a `sonora-0.4.0-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
 
 ## Features
 
@@ -33,6 +33,7 @@ GitHub Actions also builds a `sonora-0.3.0-beta01-debug` artifact for developers
 - Resume episodes from saved positions, mark played/unplayed, seek −15/+30 seconds and choose 0.75–2× speed. Podcast episodes share the queue, favorites, playlists and background player.
 - Real YouTube search: thumbnail, title, uploader/artist and duration. No seeded/demo catalog.
 - Audio playback, pause, previous/restart, next and seeking.
+- Faster starts: prepare likely tracks and the next queue item, with bounded audio prefixes kept only in RAM. Keeps the same audio quality; disable extra data use in About → Faster playback starts. [Strategy and measured results](docs/STARTUP.md).
 - Persistent mini-player across Home, Search, Library and Podcasts.
 - `MediaSessionService` with automatic media notification, lock-screen controls, audio focus and headphone-disconnect handling.
 - Queue: play a list, append, jump, remove, move up and clear; restore the list, selected song and last saved position after process death/reboot, paused until you press Play.
@@ -64,7 +65,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 The wrapper uses Gradle 8.13 with a pinned distribution SHA-256. Dependency versions are pinned in [`gradle/libs.versions.toml`](gradle/libs.versions.toml). See [dependency decisions and official references](docs/DEPENDENCIES.md).
 
-Unit tests cover persistent Room data, v1→v2→v3→v4 migrations, backup validation/round trips/rollback, playlist editing, queue checkpoints, CSV/ZIP parsing and size bounds, atomic imports, deduplication, independent favorites/history updates, history clearing, stale search cancellation, error/retry behavior and stream cache expiry/invalidation/concurrency. Live source tests are skipped by default so public CI is deterministic.
+Unit tests cover persistent Room data, v1→v2→v3→v4 migrations, backup validation/round trips/rollback, playlist editing, queue checkpoints, CSV/ZIP parsing and size bounds, atomic imports, deduplication, independent favorites/history updates, history clearing, stale search cancellation, error/retry behavior stream cache expiry/invalidation/concurrency, cancellation races, and byte-exact prepared audio continuation and seeking. Live source tests are skipped by default so public CI is deterministic.
 
 ```bash
 # Opt-in: real search, extraction and an HTTP audio-byte probe (not an audio playback test)
@@ -79,11 +80,14 @@ SONORA_LIVE_IMPORT=true ./gradlew testDebugUnitTest --tests '*LiveImportTest'
 # Opt-in: real podcast discovery, RSS playback, resume and background behavior
 ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.livePodcasts=true
 
+# Opt-in: startup timings, automatic preparation, cached/network handoff and seeking
+./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.startupBenchmark=true
+
 # Also require successful playback of a real extracted YouTube stream
 ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.liveYouTube=true
 ```
 
-The device test creates a temporary WAV fixture at runtime; this is never included in the production catalog. The optional live test depends on upstream availability and network policy. [Device playback smoke test](https://github.com/guardiola98/sonora-android/actions/workflows/device.yml) exposes both options from GitHub's **Run workflow** menu.
+The device test creates a temporary WAV fixture at runtime; this is never included in the production catalog. The optional live test depends on upstream availability and network policy. [Device playback smoke test](https://github.com/guardiola98/sonora-android/actions/workflows/device.yml) exposes these options from GitHub's **Run workflow** menu.
 
 ## Architecture
 
@@ -105,7 +109,7 @@ Compose screens → MusicViewModel → SearchPresenter → MusicSource
 - `ui/` contains Compose screens, the MVVM presentation layer and lifecycle-aware StateFlow collection.
 - A small application graph supplies dependencies; no global Activity or player references are retained by the UI.
 
-Stream URLs are resolved lazily on ExoPlayer's loader path, on an IO dispatcher. They are never persisted in Room or passed to the screens. Signed URL expiry triggers a bounded retry, with a manual retry if the source still fails. Favorites, history, playlists and persisted queue contain canonical source references and metadata only (podcasts use the feed URL and a hash of the publisher’s episode GUID). File parsing is independent of networking and playback; importing does not start playback or create listening-history entries. Import and backup restore transactions either complete or roll back. A process-wide queue writer serializes checkpoints and outlives service teardown; position-only updates avoid rewriting the queue JSON. Core library NIO desugaring supports NewPipeExtractor on API 26–32.
+Stream URLs are resolved on an IO dispatcher, either by bounded optional preparation or when ExoPlayer needs them. Identical requests share one extraction; unrelated requests can proceed independently. Prepared audio prefixes use the exact resolved URL, expire after five minutes and are never written to disk. They are never persisted in Room or passed to the screens. Signed URL expiry triggers a bounded retry, with a manual retry if the source still fails. Favorites, history, playlists and persisted queue contain canonical source references and metadata only (podcasts use the feed URL and a hash of the publisher’s episode GUID). File parsing is independent of networking and playback; importing does not start playback or create listening-history entries. Import and backup restore transactions either complete or roll back. A process-wide queue writer serializes checkpoints and outlives service teardown; position-only updates avoid rewriting the queue JSON. Core library NIO desugaring supports NewPipeExtractor on API 26–32.
 
 Podcast formats, privacy, limits and manual checks: [PODCASTS.md](docs/PODCASTS.md).
 
@@ -114,8 +118,8 @@ Podcast formats, privacy, limits and manual checks: [PODCASTS.md](docs/PODCASTS.
 - Search returns the first page of normal video/audio results; live streams are excluded. Playlist imports follow pagination, up to the documented import limits.
 - Import is a one-time copy, not account synchronization. Sonora never signs in to Google. Likes/private playlists require exported files; only tracks present in the export can be imported. [Formats and limits](docs/IMPORTING.md).
 - Artist text is the uploader name reported by the source, not a curated music database.
-- Queue metadata and position are saved locally. Reopening restores them in pause without extracting a stream. While playing, position checkpoints are written every two seconds; an abrupt kill can lose the last uncommitted interval. A cleared queue stays cleared.
-- No downloads, offline audio cache, account sign-in, casting or equalizer. Shuffle/repeat, a sleep timer, resumable background imports, search pagination and additional interface languages remain future work.
+- Queue metadata and position are saved locally. Restoration itself remains paused and does not extract a stream. With faster starts enabled, the foreground screen can separately prepare likely tracks without autoplay. While playing, position checkpoints are written every two seconds; an abrupt kill can lose the last uncommitted interval. A cleared queue stays cleared.
+- No offline downloads, persistent audio cache, account sign-in, casting or equalizer. Shuffle/repeat, a sleep timer, resumable background imports, search pagination and additional interface languages remain future work.
 - Source changes, IP throttling, verification requests and unavailable tracks can prevent playback. Sonora surfaces those failures and does not add credentials, proxies, DRM handling or access-restriction overrides.
 - Android force-stop stops playback. Manufacturer battery policies still require testing on physical hardware.
 - History shows the 200 most recently played distinct tracks.

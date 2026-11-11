@@ -1,0 +1,37 @@
+[
+  {
+    "name": "automatic",
+    "passed": 1,
+    "seconds": "4.489"
+  },
+  {
+    "name": "benchmark",
+    "passed": 1,
+    "seconds": "36.464"
+  },
+  {
+    "name": "release-podcast",
+    "passed": 1,
+    "seconds": "22.267"
+  },
+  {
+    "name": "release-regression",
+    "passed": 5,
+    "seconds": "113.592"
+  },
+  {
+    "name": "release-ui",
+    "passed": 1,
+    "seconds": "4.098"
+  },
+  {
+    "name": "release-queue-seed",
+    "passed": 1,
+    "seconds": "1.589"
+  },
+  {
+    "name": "release-queue-verify",
+    "passed": 1,
+    "seconds": "1.875"
+  }
+]

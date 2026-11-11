@@ -8,12 +8,17 @@ import org.schabi.newpipe.extractor.localization.Localization
 import org.sonora.music.data.*
 import kotlinx.coroutines.*
 import org.sonora.music.playback.PlaybackStatus
+import org.sonora.music.playback.AudioPrefixCache
+import org.sonora.music.playback.PlaybackPreparation
+import androidx.media3.common.util.UnstableApi
 import java.util.concurrent.TimeUnit
 
+@UnstableApi
 class SonoraApplication : Application() {
     val graph by lazy { AppGraph(this) }
     override fun onCreate() { super.onCreate(); graph }
 }
+@UnstableApi
 class AppGraph(application: Application) {
     private val http = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(25, TimeUnit.SECONDS).callTimeout(40, TimeUnit.SECONDS).build()
@@ -25,13 +30,15 @@ class AppGraph(application: Application) {
                 throw java.net.UnknownHostException("Only public podcast servers are supported.")
         }
     }).build())
-    val streams = StreamResolver(source, podcasts = podcasts)
+    val audioPrefixes = AudioPrefixCache()
+    val streams = StreamResolver(source, podcasts = podcasts, onInvalidated = audioPrefixes::invalidate)
     val database = Room.databaseBuilder(application, LibraryDatabase::class.java, "sonora.db").addMigrations(DatabaseMigrations.FROM_1_TO_2, DatabaseMigrations.FROM_2_TO_3, DatabaseMigrations.FROM_3_TO_4).build()
     val library = database.library()
     val podcastLibrary = database.podcasts()
     val importer = ImportRepository(source, library)
     val playbackStatus = PlaybackStatus()
     private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val preparation = PlaybackPreparation(streams, audioPrefixes, persistenceScope, application.getSharedPreferences("playback", Application.MODE_PRIVATE))
     val podcastProgress = PodcastProgressStore(podcastLibrary, persistenceScope) { playbackStatus.report("Episode progress could not be saved.") }
     val queueStore = PlaybackQueueStore(library, persistenceScope) { playbackStatus.report("Queue could not be saved. Check available storage.") }
 }

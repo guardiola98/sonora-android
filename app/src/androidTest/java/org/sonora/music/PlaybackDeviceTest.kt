@@ -30,6 +30,7 @@ import kotlin.math.sin
 @RunWith(AndroidJUnit4::class)
 @UnstableApi
 class PlaybackDeviceTest {
+    @get:org.junit.Rule val noSpeculation = SpeculationDisabledRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private fun main(block: () -> Unit) = instrumentation.runOnMainSync(block)

@@ -1,22 +1,17 @@
 package org.sonora.music.data
 
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import org.sonora.music.domain.AudioStream
-import org.sonora.music.domain.MusicSource
+import org.sonora.music.domain.*
 
-/** Short in-memory cache. A queued item is resolved when opened, not when enqueued. */
-class StreamResolver(private val source: MusicSource, private val podcasts: org.sonora.music.domain.PodcastSource? = null, private val now: () -> Long = System::currentTimeMillis) {
-    private data class Entry(val stream: AudioStream, val expires: Long)
-    private val cache = mutableMapOf<String, Entry>()
-    private val mutex = Mutex()
-    suspend fun resolve(url: String): AudioStream = mutex.withLock {
-        cache[url]?.takeIf { it.expires > now() }?.let { return@withLock it.stream }
-        val stream = if (org.sonora.music.domain.PodcastLinks.isEpisode(url)) requireNotNull(podcasts).resolve(url) else source.resolve(url)
-        cache.entries.removeAll { it.value.expires <= now() }
-        if (cache.size >= 50) cache.remove(cache.keys.first())
-        cache[url] = Entry(stream, now() + 5 * 60 * 1000)
-        stream
+/** Independent requests run concurrently; identical requests share the current extraction. */
+class StreamResolver(private val source: MusicSource, private val podcasts: PodcastSource? = null,
+    private val onInvalidated: (String) -> Unit = {}, private val now: () -> Long = System::currentTimeMillis) {
+    private val cache = SingleFlightCache<String, AudioStream>(50, 5 * 60_000, now)
+    suspend fun resolve(url: String): AudioStream = cache.get(url) {
+        if (PodcastLinks.isEpisode(url)) requireNotNull(podcasts).resolve(url) else source.resolve(url)
     }
-    suspend fun invalidate(url: String) = mutex.withLock { cache.remove(url); podcasts?.invalidate(url); Unit }
+    suspend fun invalidate(url: String) {
+        podcasts?.invalidate(url)
+        cache.invalidate(url)
+        onInvalidated(url)
+    }
 }

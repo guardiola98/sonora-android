@@ -27,9 +27,12 @@ class NewPipeMusicSource : MusicSource, LibraryImportSource {
     }
 
     override suspend fun resolve(url: String): AudioStream = extract {
-        val info = StreamInfo.getInfo(ServiceList.YouTube, url)
+        val extractor = ServiceList.YouTube.getStreamExtractor(url)
+        extractor.fetchPage()
+        // Public API only: do not extract unused video formats, subtitles or related metadata.
+        // The external extractor retains responsibility for all source access/playability checks.
         // Progressive audio only; no DRM, cookies, credentials, proxy or restriction overrides.
-        val stream = info.audioStreams.filter { it.isUrl && it.deliveryMethod.name == "PROGRESSIVE_HTTP" }
+        val stream = extractor.audioStreams.filter { it.isUrl && it.deliveryMethod.name == "PROGRESSIVE_HTTP" }
             .maxByOrNull { it.averageBitrate }
             ?: throw MusicSourceException(MusicSourceException.Kind.UNAVAILABLE)
         AudioStream(stream.content)

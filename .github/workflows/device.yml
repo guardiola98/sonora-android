@@ -10,6 +10,10 @@ on:
         description: 'Also test real RSS podcast search and playback (network-dependent)'
         type: boolean
         default: false
+      startup_benchmark:
+        description: 'Measure real startup latency and automatic audio preparation'
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -35,7 +39,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.liveYouTube=${{ inputs.live_youtube }} -Pandroid.testInstrumentationRunnerArguments.livePodcasts=${{ inputs.live_podcasts }}
+          script: ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.liveYouTube=${{ inputs.live_youtube }} -Pandroid.testInstrumentationRunnerArguments.livePodcasts=${{ inputs.live_podcasts }} -Pandroid.testInstrumentationRunnerArguments.startupBenchmark=${{ inputs.startup_benchmark }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

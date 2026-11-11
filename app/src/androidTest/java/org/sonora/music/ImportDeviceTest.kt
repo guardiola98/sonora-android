@@ -21,6 +21,7 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 @UnstableApi
 class ImportDeviceTest {
+    @get:org.junit.Rule val noSpeculation = SpeculationDisabledRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private fun find(root: AccessibilityNodeInfo?, predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
         if (root == null) return null

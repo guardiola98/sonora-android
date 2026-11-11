@@ -1,0 +1,69 @@
+{
+  "version": "0.4.0-beta01",
+  "track": "https:\/\/www.youtube.com\/watch?v=sMcWOaJFuw0",
+  "results": [
+    {
+      "mode": "cold",
+      "trial": 1,
+      "startupMs": 2095,
+      "preparationMs": 0,
+      "error": null
+    },
+    {
+      "mode": "cold",
+      "trial": 2,
+      "startupMs": 2130,
+      "preparationMs": 0,
+      "error": null
+    },
+    {
+      "mode": "cold",
+      "trial": 3,
+      "startupMs": 2715,
+      "preparationMs": 0,
+      "error": null
+    },
+    {
+      "mode": "resolved",
+      "trial": 1,
+      "startupMs": 943,
+      "preparationMs": 797,
+      "error": null
+    },
+    {
+      "mode": "resolved",
+      "trial": 2,
+      "startupMs": 949,
+      "preparationMs": 2223,
+      "error": null
+    },
+    {
+      "mode": "resolved",
+      "trial": 3,
+      "startupMs": 924,
+      "preparationMs": 965,
+      "error": null
+    },
+    {
+      "mode": "prepared",
+      "trial": 1,
+      "startupMs": 260,
+      "preparationMs": 1561,
+      "error": null
+    },
+    {
+      "mode": "prepared",
+      "trial": 2,
+      "startupMs": 191,
+      "preparationMs": 1247,
+      "error": null
+    },
+    {
+      "mode": "prepared",
+      "trial": 3,
+      "startupMs": 203,
+      "preparationMs": 1072,
+      "error": null
+    }
+  ]
+}

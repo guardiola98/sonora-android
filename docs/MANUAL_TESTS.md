@@ -1,11 +1,11 @@
-# Beta 0.1 real-device acceptance checklist
+# Sonora real-device acceptance checklist
 
 Record device/model, Android version, commit, APK SHA-256, network type and results. Run on at least API 26 and a current API 35/36 phone; include a manufacturer with restrictive battery settings. These are manual acceptance steps, not claims that they have passed.
 
 ## Install and UI
 
 - [ ] Install the APK and cold-launch it. No blank screens or crash; Home contains honest empty states.
-- [ ] Visit all three bottom tabs. No unwanted audio starts when opening the app.
+- [ ] Visit all four bottom tabs. No unwanted audio starts when opening the app.
 - [ ] Check portrait, landscape, a small phone and tablet; large font size and TalkBack. Buttons remain reachable and labeled.
 - [ ] Open About and follow the source/license link; return to Sonora.
 
@@ -89,3 +89,17 @@ Attach only redacted logs when reporting failures. Audible output, physical head
 - Favorite an episode and add it to a playlist. Export a backup, restore on another installation, check favorites/subscriptions/progress and load a subscribed feed.
 - Unsubscribe and check other library data remains. Try malformed XML, an HTML URL, HTTP-only audio, a removed episode and a feed over 16 MiB; no crashes or false success.
 - Check small/large screens, rotation, TalkBack labels and large font sizes. No audio files are downloaded for offline use.
+
+
+## Playback startup (0.4 beta)
+
+- [ ] Update the signed 0.3 APK in place; confirm library, subscriptions, queue and progress survive.
+- [ ] On Wi-Fi and mobile data, compare an immediate tap after a fresh search with a tap after waiting a few seconds. Record network, first audible sound and any interruption, not only the spinner disappearing. Try multiple songs and publishers.
+- [ ] Listen through the first 30 seconds of a prepared track, then seek beyond the prepared portion and back to the start. No gaps, duplication or quality change should occur at the cached/network boundary.
+- [ ] Queue several songs and podcasts. Skip quickly, let tracks finish naturally, and play an unrelated result while preparation is active. No wrong audio, blocked Play or stale queue transition.
+- [ ] Browse results without pressing Play; no audible output, playback notification or new history entry. Background the Activity while browsing; speculative screen preparation stops.
+- [ ] Disable About → Faster playback starts, relaunch, and verify the switch persists. Normal playback and pause/resume still work. Enable it again and allow preparation to finish.
+- [ ] Leave a prepared item untouched for over five minutes; play it and verify fresh resolution. Repeat URL-expiry recovery, airplane-mode interruption, reconnect and Retry without an infinite loop.
+- [ ] On a slow or unstable connection, listen for startup stutter and recovery. The small initial buffer is a latency tradeoff; later buffering must still stabilize playback.
+- [ ] Resume a long podcast well beyond its first seconds; verify its saved position is honored. A beginning-only prefix does not guarantee an instant resume at distant positions.
+- [ ] Check About on a small screen, landscape, large text and TalkBack; the faster-start switch remains reachable and its purpose understandable.

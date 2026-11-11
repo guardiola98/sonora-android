@@ -18,7 +18,7 @@ import org.sonora.music.domain.Track
 
 @UnstableApi
 class PlaybackConnection(context: Context, private val scope: CoroutineScope,
-    private val status: PlaybackStatus, private val streams: StreamResolver, private val podcasts: org.sonora.music.data.PodcastDao) {
+    private val status: PlaybackStatus, private val streams: StreamResolver, private val podcasts: org.sonora.music.data.PodcastDao, private val preparation: PlaybackPreparation) {
     private val mutable = MutableStateFlow(PlayerSnapshot())
     val state = mutable.asStateFlow()
     private var controller: MediaController? = null
@@ -58,6 +58,7 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
     }
     fun play(tracks: List<Track>, index: Int) {
         if (tracks.isEmpty() || index !in tracks.indices) return
+        preparation.prioritize(tracks[index].url)
         val request = ++playRequest
         scope.launch {
             val position = if (org.sonora.music.domain.PodcastLinks.isEpisode(tracks[index].url)) try { podcasts.progressFor(tracks[index].url)?.resumeMs ?: 0 }
@@ -86,12 +87,12 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
         result.addListener({ done(runCatching { result.get().resultCode == SessionResult.RESULT_SUCCESS }.getOrDefault(false)) }, mainExecutor)
     }
     fun speed(value: Float) { controller?.setPlaybackSpeed(value.coerceIn(0.5f, 2f)) }
-    fun next() { controller?.seekToNextMediaItem() }
+    fun next() { controller?.let { c -> if (c.nextMediaItemIndex != androidx.media3.common.C.INDEX_UNSET) preparation.prioritize(c.getMediaItemAt(c.nextMediaItemIndex).mediaId); c.seekToNextMediaItem() } }
     fun previous() { controller?.seekToPrevious() }
     fun jump(index: Int) { controller?.apply { if (index in 0 until mediaItemCount) { seekTo(index, 0); prepare(); play() } } }
     fun remove(index: Int) { controller?.apply { if (index in 0 until mediaItemCount) removeMediaItem(index) } }
     fun moveUp(index: Int) { controller?.apply { if (index in 1 until mediaItemCount) moveMediaItem(index, index - 1) } }
-    fun clear() { playRequest++; controller?.apply { stop(); clearMediaItems() }; status.report(null) }
+    fun clear() { playRequest++; preparation.prioritize(null); controller?.apply { stop(); clearMediaItems() }; status.report(null) }
     fun release() {
         released = true // Intentional Activity/ViewModel teardown is not a playback error.
         controller?.removeListener(listener)

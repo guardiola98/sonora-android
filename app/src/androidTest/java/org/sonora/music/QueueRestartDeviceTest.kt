@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 @RunWith(AndroidJUnit4::class)
 @UnstableApi
 class QueueRestartDeviceTest {
+    @get:org.junit.Rule val noSpeculation = SpeculationDisabledRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app get() = instrumentation.targetContext.applicationContext as SonoraApplication
     private val podcastUrl = org.sonora.music.domain.PodcastLinks.reference("https://example.org/sonora-test.xml", "queue-podcast-fixture")

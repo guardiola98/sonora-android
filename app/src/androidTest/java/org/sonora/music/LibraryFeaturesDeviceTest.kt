@@ -26,6 +26,7 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 @UnstableApi
 class LibraryFeaturesDeviceTest {
+    @get:org.junit.Rule val noSpeculation = SpeculationDisabledRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private fun find(root: AccessibilityNodeInfo?, test: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
         if (root == null) return null

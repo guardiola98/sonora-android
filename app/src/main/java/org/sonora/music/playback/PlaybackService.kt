@@ -15,6 +15,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -44,14 +45,15 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         val http = DefaultHttpDataSource.Factory().setUserAgent(ExtractorDownloader.USER_AGENT)
             .setConnectTimeoutMs(15_000).setReadTimeoutMs(25_000)
-        val resolving = ResolvingDataSource.Factory(DefaultDataSource.Factory(this, http)) { spec ->
+        val resolving = ResolvingDataSource.Factory(DefaultDataSource.Factory(this, androidx.media3.datasource.DataSource.Factory { PrefixDataSource(http.createDataSource(), graph.audioPrefixes) })) { spec ->
             val host = spec.uri.host.orEmpty()
             if (PodcastLinks.isEpisode(spec.uri.toString()) || host == "www.youtube.com" || host == "youtube.com" || host == "m.youtube.com" || host == "youtu.be") {
                 val stream = runBlocking(Dispatchers.IO) { graph.streams.resolve(spec.uri.toString()) }
                 spec.withUri(stream.url.toUri())
             } else spec
         }
-        player = ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(resolving)).build().apply {
+        player = ExoPlayer.Builder(this).setLoadControl(DefaultLoadControl.Builder()
+            .setBufferDurationsMs(15_000, 50_000, 250, 2_000).setBackBuffer(10_000, false).build()).setMediaSourceFactory(DefaultMediaSourceFactory(resolving)).build().apply {
             setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)
             setWakeMode(C.WAKE_MODE_NETWORK)
@@ -71,6 +73,7 @@ class PlaybackService : MediaSessionService() {
                 }
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     refreshed = false; recorded = false
+                    if (!applyingRestore) graph.preparation.prioritize(mediaItem?.mediaId)
                     graph.playbackStatus.report(null)
                     if (mediaItem != null && !PodcastLinks.isEpisode(mediaItem.mediaId)) setPlaybackSpeed(1f)
                     // Automatic/queue transitions resume podcasts too. An explicit seek or restored queue wins.
@@ -153,7 +156,17 @@ class PlaybackService : MediaSessionService() {
             }
             loadingQueue = false
             saveQueue()
-            while (isActive) { delay(2_000); if (player.isPlaying) saveQueue() }
+            while (isActive) {
+                delay(2_000)
+                if (player.isPlaying) {
+                    saveQueue()
+                    val remaining = player.duration.takeIf { it > 0 }?.minus(player.currentPosition) ?: Long.MAX_VALUE
+                    if (player.totalBufferedDuration >= 5_000 && (player.currentPosition < 10_000 || remaining < 30_000)) {
+                        val next = player.nextMediaItemIndex
+                        if (next != C.INDEX_UNSET) graph.preparation.next(player.getMediaItemAt(next).mediaId)
+                    }
+                }
+            }
         }
 
     }
@@ -185,6 +198,7 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         saveQueue()
         destroying = true
+        graph.preparation.prioritize(null)
         session?.release(); session = null
         player.release()
         scope.cancel()

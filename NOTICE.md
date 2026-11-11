@@ -10,7 +10,7 @@ Sonora integrates these external projects. Their notices remain in the dependenc
 |---|---|---|
 | NewPipeExtractor | GPL-3.0-or-later | [TeamNewPipe/NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor/tree/v0.27.1), [license](https://github.com/TeamNewPipe/NewPipeExtractor/blob/v0.27.1/LICENSE) |
 | Kotlin and kotlinx.coroutines | Apache-2.0 | [Kotlin](https://github.com/JetBrains/kotlin), [coroutines](https://github.com/Kotlin/kotlinx.coroutines) |
-| AndroidX Compose, Material icons, Room, Lifecycle, Activity, Core, Media3 | Apache-2.0 | [AndroidX](https://android.googlesource.com/platform/frameworks/support/), [Media3](https://github.com/androidx/media) |
+| AndroidX Compose, Material icons, Room, Lifecycle, Activity, Core, Media3, WorkManager | Apache-2.0 | [AndroidX](https://android.googlesource.com/platform/frameworks/support/), [Media3](https://github.com/androidx/media) |
 | OkHttp / Okio | Apache-2.0 | [Square](https://github.com/square/okhttp), [Okio](https://github.com/square/okio) |
 | Coil | Apache-2.0 | [Coil](https://github.com/coil-kt/coil) |
 | jsoup | MIT | [jsoup](https://github.com/jhy/jsoup) |

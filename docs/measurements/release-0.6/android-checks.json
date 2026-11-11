@@ -1,0 +1,10 @@
+{
+  "versionBefore": "0.5.0-beta01",
+  "versionAfter": "0.6.0-beta01",
+  "passed": 5,
+  "initialSuitePassed": 4,
+  "initialSuiteSeconds": "61.666",
+  "libraryRetryPassed": 1,
+  "libraryRetrySeconds": "11.404",
+  "liveYouTube": "not requested; opt-in test skipped"
+}

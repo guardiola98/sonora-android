@@ -41,10 +41,13 @@ class LibraryFeaturesDeviceTest {
         fail(label)
     }
     private fun click(text: String) {
-        await("Missing $text") { node(text) != null }
-        var item = node(text)!!
-        while (!item.isClickable && item.parent != null) item = item.parent
-        assertTrue(item.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        // Text-field edits and navigation can replace a semantics node on the next frame.
+        // Retry only rejected actions; never repeat a click that Android accepted.
+        await("Could not click $text") {
+            var item = node(text) ?: return@await false
+            while (!item.isClickable && item.parent != null) item = item.parent
+            item.isEnabled && item.isClickable && item.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        }
         instrumentation.waitForIdleSync()
     }
     private fun enter(text: String) {

@@ -41,6 +41,7 @@ import org.sonora.music.domain.YouTubeLinks
         return
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), vm::importFiles)
+    val spotifyPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), vm::importSpotifyFiles)
     var url by rememberSaveable { mutableStateOf("") }
     var help by rememberSaveable { mutableStateOf(false) }
     var browserError by remember { mutableStateOf(false) }
@@ -117,6 +118,18 @@ import org.sonora.music.domain.YouTubeLinks
             }
         } else {
             item { AccountImportButtons(vm) }
+            item {
+                OutlinedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Import a Spotify export", style = MaterialTheme.typography.titleLarge)
+                        Text("Choose your account-data ZIP, Playlist JSON or YourLibrary.json. No developer account or OAuth setup needed. Select lists first, then review playable versions.")
+                        Button(onClick = { spotifyPicker.launch(arrayOf("*/*")) }) { Text("Choose Spotify ZIP / JSON") }
+                        Text("In Spotify account → Privacy settings, request Account data. When it is ready, download it and return here. Only playlist and saved-song files are read; profiles, payments and history are ignored.", style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = { browserError = runCatching { uriHandler.openUri("https://www.spotify.com/account/privacy/") }.isFailure }) { Text("Open Spotify data export") }
+                        if (browserError) Text("Open spotify.com/account/privacy in your browser.")
+                    }
+                }
+            }
             item {
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -1,3 +1,5 @@
+Current import follow-up: [0.7.1 Spotify export validation](SPOTIFY-EXPORT-VALIDATION.md). The evidence below retains its original version scope.
+
 Latest development change: [temporary OAuth import validation](OAUTH-VALIDATION.md). The evidence below describes the published 0.6 release.
 
 # Sonora 0.6.0-beta01 publication validation

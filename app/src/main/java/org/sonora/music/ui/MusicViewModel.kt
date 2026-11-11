@@ -154,6 +154,26 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
         catch (e: CancellationException) { throw e }
         catch (_: Exception) { mutableMessage.value = "Could not save playlist order."; done(false) }
     }
+    fun importSpotifyFiles(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        accountImporter.loadSpotifyExport {
+            runInterruptible(Dispatchers.IO) {
+                if (uris.size > 20) throw ImportAccessException("Select up to 20 playlist/library files at a time.")
+                val result = mutableListOf<ReviewedPlaylist>()
+                for (uri in uris) {
+                    val resolver = app.contentResolver
+                    val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) cursor.getString(0) else null
+                    } ?: "export.json"
+                    val parsed = resolver.openInputStream(uri)?.use { SpotifyExportParser().read(name, it) }
+                        ?: throw ImportAccessException("Could not open the export. Download it to this device first.")
+                    result.addAll(parsed)
+                    if (result.sumOf { it.songs.size } > 10_000) throw ImportAccessException("Import up to 10,000 entries at a time.")
+                }
+                SpotifyExportParser.combine(result)
+            }
+        }
+    }
     fun importFiles(uris: List<Uri>) {
         if (uris.isEmpty()) return
         importer.load {

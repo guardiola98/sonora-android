@@ -107,4 +107,17 @@ class LibraryImportTest {
             assertEquals(1, upgraded.library().playlists().first().single().trackCount)
         } finally { upgraded.close() }
     }
+    @Test fun spotifyExportReimportMergesCanonicalChoicesAndPreservesFavoritesAndHistory() = runTest {
+        val key = "spotify:export:fixture"
+        val first = ImportCollection(key, "Spotify export", listOf(b, a))
+        db.library().recordPlay(a, 42)
+        db.library().importCollections(listOf(ImportSelection(first, true, true)), 100)
+        val second = db.library().importCollections(listOf(ImportSelection(first.copy(tracks = listOf(b, a, c)), true, false)), 200)
+        assertEquals(0, second.newPlaylists); assertEquals(1, second.addedEntries)
+        val id = db.library().findPlaylist(key)!!.id
+        assertEquals(listOf(b.url, a.url, c.url), db.library().playlistTracks(id).first().map { it.url })
+        assertEquals(42L, db.library().find(a.url)!!.lastPlayedAt); assertTrue(db.library().find(a.url)!!.favorite)
+        assertEquals(key, db.library().exportBackup().playlists.single().key)
+    }
+
 }

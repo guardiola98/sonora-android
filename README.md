@@ -4,7 +4,7 @@
 
 An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account or API key is required for playback. No ads or analytics. Optional temporary playlist authorization requires distributor OAuth setup.
 
-**Development version: 0.7.0-beta01. Published release: 0.6.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
+**Current beta: 0.7.1-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
 <p>
   <img src="docs/screenshots/discovery-home.png" width="240" alt="Personalized Sonora Home on Android 15" />
@@ -16,11 +16,11 @@ Actual emulator captures from the signed 0.5 beta, using public music searches a
 
 ## Install
 
-Download the [signed Sonora 0.6 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.6.0-beta01/sonora-0.6.0-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
+Download the [signed Sonora 0.7.1 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.7.1-beta01/sonora-0.7.1-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
 
 This release uses a **persistent signing key**. Future releases using this key can update it without uninstalling or clearing the library. Earlier **debug** builds can have different certificates and cannot necessarily be upgraded in place. Do not uninstall an older build with data you need unless you have a usable backup. A new signing key cannot grant access to another application's private data. See [release signing and upgrade notes](docs/RELEASING.md).
 
-Android may ask you to allow installation from the app opening the APK. Search for a song or use **Library → Import music** for YouTube Music playlists/likes. Use **Library → Backup and restore** to save a copy outside the app before changing phones or uninstalling.
+Android may ask you to allow installation from the app opening the APK. Search for a song or use **Library → Import music** for Spotify exports and YouTube Music playlists/likes. Use **Library → Backup and restore** to save a copy outside the app before changing phones or uninstalling.
 
 From Sonora 0.6, **About → Updates** checks the official distribution channel and hands verified updates to Android for confirmation. See [in-app updates](docs/UPDATES.md) for signing, publication and validation.
 
@@ -44,7 +44,8 @@ GitHub Actions also builds a `sonora-0.7.0-beta01-debug` artifact for developers
 - Create and rename local playlists, add/remove songs, drag handles to reorder with edge scrolling, and accessible move up/down menu actions. Imported playlists can be edited too.
 - Export a versioned Sonora JSON backup of favorites, all history, playlists (including empty ones), podcast subscriptions and episode progress; preview and merge backups atomically without deleting existing data.
 - Room favorites, listening history and imported playlists; history starts only when the player reports playback.
-- Temporary account playlist import (new in main, not in the published 0.6 APK): browser PKCE, multi-selection, conservative Spotify version review and early credential disposal. **Requires OAuth app registration; Google additionally needs the optional HTTPS broker and resolution of its API policy restrictions on permanent copies/background players.** Not enabled in an unconfigured build. [Setup, provider restrictions and privacy](docs/OAUTH-IMPORT.md).
+- Temporary account playlist import: browser PKCE, multi-selection, conservative Spotify version review and early credential disposal. **Requires OAuth app registration; Google additionally needs the optional HTTPS broker and resolution of its API policy restrictions on permanent copies/background players.** Not enabled in an unconfigured build. [Setup, provider restrictions and privacy](docs/OAUTH-IMPORT.md).
+- Import official Spotify account-data ZIP/JSON playlists and saved songs without OAuth. Choose lists, optionally search YouTube, and explicitly confirm versions; export files do not establish recording duration. [Usage, identity and limits](docs/SPOTIFY-EXPORT.md).
 - Import public/unlisted YouTube Music playlist links, including subsequent pages.
 - Import Takeout ZIP/CSV playlists, library songs and exported likes, with a preview and per-list Playlist/Favorites choices. Reimports merge without duplicating entries or removing existing likes.
 - Optional missing-title lookup; file imports also work offline. Database upgrades preserve existing favorites and history.

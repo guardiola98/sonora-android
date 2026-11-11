@@ -1,0 +1,62 @@
+{
+  "version": "0.7.1-beta01",
+  "versionCode": 9,
+  "date": "2026-11-11",
+  "unit": {
+    "tests": 136,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2
+  },
+  "lint": {
+    "Error": 0,
+    "Warning": 28
+  },
+  "brokerTestsPassed": 6,
+  "emulatorApi": 35,
+  "installedAsUpgrade": true,
+  "device": [
+    {
+      "class": "SpotifyExportDeviceTest",
+      "passed": true,
+      "passedChecks": 1,
+      "skippedChecks": 0
+    },
+    {
+      "class": "AccountImportDeviceTest",
+      "passed": true,
+      "passedChecks": 1,
+      "skippedChecks": 0
+    },
+    {
+      "class": "ImportDeviceTest",
+      "passed": true,
+      "passedChecks": 1,
+      "skippedChecks": 0
+    },
+    {
+      "class": "LibraryFeaturesDeviceTest",
+      "passed": true,
+      "passedChecks": 1,
+      "skippedChecks": 0
+    },
+    {
+      "class": "PlaybackDeviceTest",
+      "passed": true,
+      "passedChecks": 2,
+      "skippedChecks": 1
+    }
+  ],
+  "realAccountOAuthTested": false,
+  "personalSpotifyExportProvided": false,
+  "testedRuntimeSha256": {
+    "classes.dex": "6033293b59cb6797ca67737df0e841783d3fd651569071e992ee8ae7133bba33",
+    "classes2.dex": "d790b5d2e8dca7131a973b1781433223ad87f48bc651304cb0f59a9d48910831",
+    "classes3.dex": "e7d09f904262792033a635cb444a0beac639e9c401df45f39639b1c6dd4c45d5",
+    "classes4.dex": "53e2bfa50846013ea825aae4fab2e9fbc2b2216577332153f7fb7e66ec60514a",
+    "classes5.dex": "fc8c3938f4ab552a0223da34dc85cdefff4c3722584440a0e81ad2b497015370",
+    "classes6.dex": "d39d72c51908133ee580f3d1d10d9cc6cd21a7296c567174b1b27719764f342b",
+    "AndroidManifest.xml": "f474c3b535ecdfbe74992db7332467592f3fd5615a607be1371f0475f8b6cb6e",
+    "resources.arsc": "8636ea880f61757489d5e73699c5b4ab7ccffdf2c4ae8dc9e37adfc15621e1ca"
+  }
+}

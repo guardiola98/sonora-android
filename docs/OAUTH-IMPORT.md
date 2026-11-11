@@ -1,6 +1,6 @@
 # Temporary account import
 
-Status: Spotify is implemented behind public build-time configuration. The YouTube Data API adapter/broker is experimental and additionally gated on use-case approval. No provider application credentials, live account grants, hosted callback or deployed broker were available during development. **A default APK cannot connect an account until its distributor completes the setup below.** The import screen explains this and retains working Takeout and public-link imports.
+Status: Spotify is implemented behind public build-time configuration. The YouTube Data API adapter/broker is experimental and additionally gated on use-case approval. No provider application credentials, live account grants, hosted callback or deployed broker were available during development. **A default APK cannot connect an account until its distributor completes the setup below.** The import screen explains this and retains working Takeout and public-link imports. Since 0.7.1, [official Spotify ZIP/JSON exports](SPOTIFY-EXPORT.md) also provide a working, credential-free transfer route; it is not an OAuth connection.
 
 ## What the user can do
 

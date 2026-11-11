@@ -10,7 +10,8 @@ import org.sonora.music.domain.*
 data class AccountImportState(val provider: ImportProvider? = null, val busy: Boolean = false, val authorizing: Boolean = false,
     val progress: String = "", val lists: List<RemotePlaylist> = emptyList(), val selected: Set<String> = emptySet(),
     val review: List<ReviewedPlaylist> = emptyList(), val error: String? = null, val skipPending: Boolean = false,
-    val disconnected: Boolean = true, val transferred: Boolean = false) {
+    val disconnected: Boolean = true, val transferred: Boolean = false,
+    val fromFile: Boolean = false, val searchOnline: Boolean = true) {
     val pending get() = review.sumOf { list -> list.songs.count { it.chosen == null } }
 }
 class AccountImportPresenter(private val scope: CoroutineScope, private val catalog: MusicCatalogSource,
@@ -22,10 +23,28 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
     private var job: Job? = null
     private var expiry: Job? = null
     private var generation = 0
+    private var fileLists: Map<String, ReviewedPlaylist> = emptyMap()
     fun cancel() {
         generation++; job?.cancel(); job = null; expiry?.cancel(); expiry = null
-        access?.close(); access = null; mutable.value = AccountImportState()
+        access?.close(); access = null; fileLists = emptyMap(); mutable.value = AccountImportState()
     }
+    /** File metadata stays in memory and cannot trigger a provider connection. */
+    fun loadSpotifyExport(loader: suspend () -> List<ReviewedPlaylist>) {
+        cancel(); val session = generation
+        mutable.value = AccountImportState(provider = ImportProvider.SPOTIFY, fromFile = true, busy = true, progress = "Reading Spotify export on this device…")
+        job = scope.launch {
+            try {
+                val lists = SpotifyExportParser.combine(loader())
+                ensureActive()
+                if (session != generation) return@launch
+                if (lists.isEmpty()) throw ImportAccessException("No playlists or saved songs found in this export.")
+                fileLists = lists.associateBy { it.source.id }
+                mutable.update { it.copy(busy = false, progress = "", lists = lists.map(ReviewedPlaylist::source)) }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { if (session == generation) fail(safeError(e)) }
+        }
+    }
+    fun searchOnline(enabled: Boolean) { if (!state.value.busy) mutable.update { it.copy(searchOnline = enabled) } }
     /** A stale authorization result after cancellation must be destroyed, never adopted. */
     fun connect(provider: ImportProvider, likes: Boolean, authorize: suspend () -> TemporaryAccess) {
         cancel(); val session = generation
@@ -53,13 +72,14 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
     }
     private fun safeError(e: Exception) = (e as? ImportAccessException)?.message ?: "Import could not finish. Your connection was discarded; authorize again to retry."
     private fun disconnect() { expiry?.cancel(); expiry = null; access?.close(); access = null; mutable.update { it.copy(disconnected = true, authorizing = false) } }
-    private fun fail(message: String) { job?.cancel(); disconnect(); mutable.value = AccountImportState(error = message) }
+    private fun fail(message: String) { job?.cancel(); disconnect(); fileLists = emptyMap(); mutable.value = AccountImportState(error = message) }
     fun select(id: String) { if (!state.value.busy) mutable.update { it.copy(selected = if (id in it.selected) it.selected - id else it.selected + id) } }
     fun skipPending(value: Boolean) { mutable.update { it.copy(skipPending = value) } }
     fun readSelected() {
         val initial = state.value
         val session = generation
-        val credential = access ?: return
+        val credential = access
+        if (credential == null && !initial.fromFile) return
         val provider = initial.provider ?: return
         val selected = initial.lists.filter { it.id in initial.selected }
         if (initial.busy || selected.isEmpty()) return
@@ -69,16 +89,20 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
                 var count = 0
                 val imported = selected.map { list ->
                     mutable.update { it.copy(progress = "Reading ${list.name}…") }
-                    val songs = collectAccountPages(10_000 - count) { source(provider).songs(credential, list, it) }
-                    count += songs.size
-                    ReviewedPlaylist(list, songs.map(::ReviewedSong))
+                    if (initial.fromFile) fileLists.getValue(list.id)
+                    else {
+                        val songs = collectAccountPages(10_000 - count) { source(provider).songs(credential!!, list, it) }
+                        count += songs.size
+                        ReviewedPlaylist(list, songs.map(::ReviewedSong))
+                    }
                 }
                 // No provider access is needed for matching or the confirmation screen.
                 disconnect()
+                fileLists = emptyMap()
                 val cache = mutableMapOf<String, SpotifyMatcher.Result>(); var searched = 0; var emptySearches = 0
                 val review = imported.map { list -> list.copy(songs = list.songs.map { row ->
                     ensureActive()
-                    if (provider != ImportProvider.SPOTIFY || row.source.unavailable != null) row
+                    if (provider != ImportProvider.SPOTIFY || row.source.unavailable != null || !initial.searchOnline) row
                     else {
                         val song = row.source
                         val match = cache[song.id] ?: if (searched < 200 && emptySearches < 3) {
@@ -143,6 +167,7 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
             skipped = list.songs.count { it.chosen == null }, duplicates = list.songs.mapNotNull { it.chosen }.let { it.size - it.distinctBy(Track::url).size }) }
         if (groups.isEmpty()) return
         disconnect()
+        fileLists = emptyMap()
         preview(ImportPreview(groups, allowEmptyCollections = true))
         mutable.value = AccountImportState(transferred = true)
     }

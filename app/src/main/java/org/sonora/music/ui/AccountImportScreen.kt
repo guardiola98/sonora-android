@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.media3.common.util.UnstableApi
 import org.sonora.music.BuildConfig
 import org.sonora.music.accountimport.*
@@ -78,6 +80,7 @@ private const val SETUP_URL = "https://github.com/guardiola98/sonora-android/blo
 }
 
 @Composable private fun SafeImportLink(url: String, label: String) {
+    if (url.isBlank()) return
     val uri = LocalUriHandler.current
     var failed by remember { mutableStateOf(false) }
     TextButton(onClick = { failed = runCatching { uri.openUri(url) }.isFailure }) { Text(label) }
@@ -89,9 +92,14 @@ private const val SETUP_URL = "https://github.com/guardiola98/sonora-android/blo
         item {
             if (state.provider == ImportProvider.SPOTIFY) SpotifyAttribution()
             Text("${state.provider?.label ?: "Account"} import", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = presenter::cancel) { Text("Cancel and discard connection") }
-            if (state.disconnected && !state.authorizing) Text("Connection discarded. Review stays in memory until you leave.", color = MaterialTheme.colorScheme.primary)
-            Text(DISCONNECT_NOTICE, style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = presenter::cancel) { Text(if (state.fromFile) "Cancel export import" else "Cancel and discard connection") }
+            if (state.fromFile) {
+                Text("Imported from a file. No account is connected. Selection and review stay in memory until you leave.", color = MaterialTheme.colorScheme.primary)
+                Text("Exports usually omit playlist IDs. Reimporting the same name merges into its previous file-import destination; renaming it creates a new one. API imports remain separate unless the export contains a playlist ID.", style = MaterialTheme.typography.bodySmall)
+            } else {
+                if (state.disconnected && !state.authorizing) Text("Connection discarded. Review stays in memory until you leave.", color = MaterialTheme.colorScheme.primary)
+                Text(DISCONNECT_NOTICE, style = MaterialTheme.typography.bodySmall)
+            }
         }
         state.error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
         if (state.busy) item {
@@ -105,7 +113,7 @@ private const val SETUP_URL = "https://github.com/guardiola98/sonora-android/blo
             items(state.lists, key = { it.id }) { list ->
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(list.id in state.selected, { presenter.select(list.id) })
+                        Checkbox(list.id in state.selected, { presenter.select(list.id) }, modifier = Modifier.semantics { contentDescription = "Select ${list.name}" })
                         Column(Modifier.weight(1f)) {
                             if (state.provider == ImportProvider.SPOTIFY) SpotifyAttribution()
                             Text(list.name, style = MaterialTheme.typography.titleMedium)
@@ -115,7 +123,16 @@ private const val SETUP_URL = "https://github.com/guardiola98/sonora-android/blo
                     }
                 }
             }
-            item { Button(onClick = presenter::readSelected, enabled = state.selected.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Read selection and disconnect") } }
+            item {
+                if (state.fromFile) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(state.searchOnline, presenter::searchOnline, modifier = Modifier.semantics { contentDescription = "Search selected songs online" })
+                        Text("Search YouTube for selected song titles and artists", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text("Exported songs have no reliable duration, so versions need your confirmation. Turn search off to review offline and look up individual entries later.", style = MaterialTheme.typography.bodySmall)
+                }
+                Button(onClick = presenter::readSelected, enabled = state.selected.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text(if (state.fromFile) "Review selected lists" else "Read selection and disconnect") }
+            }
         }
         if (state.review.isNotEmpty()) {
             item {
@@ -132,7 +149,7 @@ private const val SETUP_URL = "https://github.com/guardiola98/sonora-android/blo
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             if (state.provider == ImportProvider.SPOTIFY) SpotifyAttribution()
                             Text("${index + 1}. ${row.source.title}", style = MaterialTheme.typography.titleMedium)
-                            Text("${row.source.artists.joinToString()} · ${formatDuration(row.source.durationSeconds)}", style = MaterialTheme.typography.bodySmall)
+                            Text("${row.source.artists.joinToString()} · ${if (row.source.durationSeconds > 0) formatDuration(row.source.durationSeconds) else "Duration unavailable"}", style = MaterialTheme.typography.bodySmall)
                             Text(row.reason, color = if (row.chosen == null) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant)
                             row.chosen?.let { Text("Chosen: ${it.title} · ${it.artist} · ${formatDuration(it.durationSeconds)}", style = MaterialTheme.typography.bodySmall) }
                             TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide versions" else "Review / change version") }
@@ -154,8 +171,8 @@ private const val SETUP_URL = "https://github.com/guardiola98/sonora-android/blo
             }
             item {
                 if (state.pending > 0) Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(state.skipPending, presenter::skipPending, enabled = !state.busy)
-                    Text("Leave ${state.pending} pending entries out of this import. They will not be saved; reauthorize to review them later.", style = MaterialTheme.typography.bodySmall)
+                    Checkbox(state.skipPending, presenter::skipPending, enabled = !state.busy, modifier = Modifier.semantics { contentDescription = "Leave pending entries out" })
+                    Text("Leave ${state.pending} pending entries out of this import. They will not be saved; reopen the source to review them later.", style = MaterialTheme.typography.bodySmall)
                 }
                 Button(onClick = presenter::confirm, enabled = !state.busy && (state.pending == 0 || state.skipPending) && state.review.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Continue to local import preview") }
             }

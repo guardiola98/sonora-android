@@ -134,4 +134,44 @@ class AccountImportTest {
         advanceTimeBy(11); runCurrent()
         assertFalse(presenter.state.value.busy); assertNotNull(presenter.state.value.error)
     }
+    @Test fun fileSelectionDoesNotAuthorizeOrSearchUntilTheUserChoosesAndConfirms() = runTest {
+        var queries = 0; var output: ImportPreview? = null
+        val counted = object : MusicCatalogSource by catalog() {
+            override suspend fun searchPage(query: String, kind: CatalogKind, cursor: String?): CatalogPage { queries++; return catalog().searchPage(query, kind, cursor) }
+        }
+        val presenter = AccountImportPresenter(backgroundScope, counted, lookup, { error("File import must not access an account") }, { output = it })
+        val row = ReviewedPlaylist(list.copy(id = "export:fixture"), listOf(ReviewedSong(song.copy(durationSeconds = 0))))
+        presenter.loadSpotifyExport { listOf(row) }; runCurrent()
+        assertEquals(0, queries); assertTrue(presenter.state.value.disconnected); assertTrue(presenter.state.value.fromFile)
+        presenter.select(row.source.id); presenter.readSelected(); advanceTimeBy(1000); runCurrent()
+        assertEquals(1, queries); assertEquals(1, presenter.state.value.pending)
+        presenter.confirm(); assertNull(output)
+        presenter.choose(row.source.id, 0, track); presenter.confirm()
+        assertEquals("spotify:export:fixture", output!!.collections.single().key)
+        assertEquals(listOf(track), output!!.collections.single().tracks)
+    }
+    @Test fun offlineFileReviewAndCancellationNeverSendQueriesOrLeaveOldLists() = runTest {
+        var queries = 0
+        val counted = object : MusicCatalogSource by catalog() {
+            override suspend fun searchPage(query: String, kind: CatalogKind, cursor: String?): CatalogPage { queries++; return catalog().searchPage(query, kind, cursor) }
+        }
+        val presenter = AccountImportPresenter(backgroundScope, counted, lookup, { error("unused") }, {})
+        presenter.loadSpotifyExport { listOf(ReviewedPlaylist(list, listOf(ReviewedSong(song)))) }; runCurrent()
+        presenter.searchOnline(false); presenter.select(list.id); presenter.readSelected(); runCurrent()
+        assertEquals(0, queries); assertEquals(1, presenter.state.value.pending)
+        presenter.cancel(); assertEquals(AccountImportState(), presenter.state.value)
+        var cancelled = false
+        presenter.loadSpotifyExport { try { awaitCancellation() } finally { cancelled = true } }; runCurrent()
+        presenter.cancel(); runCurrent(); assertTrue(cancelled)
+        presenter.readSelected(); runCurrent(); assertEquals(AccountImportState(), presenter.state.value)
+    }
+    @Test fun fileImportReplacesAndDiscardsAnExistingAccountSession() = runTest {
+        val credential = TemporaryAccess("previous-account", 3600)
+        val presenter = AccountImportPresenter(backgroundScope, catalog(), lookup, { source() }, {})
+        presenter.connect(ImportProvider.SPOTIFY, false) { credential }; runCurrent()
+        presenter.loadSpotifyExport { throw ImportAccessException("Bad export") }; runCurrent()
+        assertTrue(credential.isClosed()); assertTrue(presenter.state.value.disconnected)
+        assertEquals("Bad export", presenter.state.value.error); assertTrue(presenter.state.value.lists.isEmpty())
+    }
+
 }

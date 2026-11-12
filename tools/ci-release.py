@@ -155,8 +155,17 @@ def api(endpoint, method='GET', data=None, binary=False):
         headers['Content-Type'] = 'application/octet-stream' if binary else 'application/json'
         data = data if binary else json.dumps(data).encode()
     request = urllib.request.Request(url, data=data, headers=headers, method=method)
-    with urllib.request.urlopen(request, timeout=120) as response:
-        return json.load(response)
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            try:
+                message = json.loads(error.read()).get('message', error.reason)
+            except (ValueError, AttributeError):
+                message = error.reason
+            print(f'GitHub {method} failed ({error.code}): {message}', file=sys.stderr)
+        raise
 
 
 def publish_github():
@@ -167,7 +176,14 @@ def publish_github():
     except urllib.error.HTTPError as error:
         if error.code != 404:
             raise
-        release = api('releases', 'POST', {'tag_name': tag, 'target_commitish': metadata['sourceCommit'], 'name': f'Sonora {name}', 'body': metadata.get('notes', ''), 'draft': True, 'prerelease': bool(re.search(r'beta|alpha|rc', name))})
+        payload = {'tag_name': tag, 'name': f'Sonora {name}', 'body': metadata.get('notes', ''), 'draft': True, 'prerelease': bool(re.search(r'beta|alpha|rc', name))}
+        tagged = subprocess.run(['git', 'rev-parse', '--verify', f'refs/tags/{tag}^{{commit}}'], cwd=ROOT, capture_output=True, text=True)
+        if tagged.returncode == 0:
+            if tagged.stdout.strip() != metadata['sourceCommit']:
+                raise SystemExit('Existing release tag does not match the signed source commit')
+        else:
+            payload['target_commitish'] = metadata['sourceCommit']
+        release = api('releases', 'POST', payload)
     existing = {asset['name']: asset for asset in release['assets']}
     for file in sorted(DIST.iterdir()):
         digest = 'sha256:' + hashlib.sha256(file.read_bytes()).hexdigest()

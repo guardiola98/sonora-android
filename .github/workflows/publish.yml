@@ -55,6 +55,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/ci-release.py github
       - name: Publish distribution to GitHub Packages
+        if: ${{ !cancelled() && steps.release.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.release.outputs.version }}

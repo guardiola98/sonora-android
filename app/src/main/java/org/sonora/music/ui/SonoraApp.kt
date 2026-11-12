@@ -102,7 +102,7 @@ import org.sonora.music.playback.PlayerSnapshot
         if (showPlayer && player.current != null) {
             FullPlayer(player, playerError, favoriteIds.contains(player.current!!.url),
                 onClose = { showPlayer = false }, onFavorite = { vm.favorite(player.current!!) },
-                onToggle = vm.playback::toggle, onNext = vm.playback::next, onPrevious = vm.playback::previous,
+                onToggle = vm.playback::toggle, onNext = vm.playback::next, onPrevious = vm.playback::previous, onShuffle = vm.playback::shuffleUpcoming,
                 onSeek = vm.playback::seek, onRewind = vm.playback::rewind, onForward = vm.playback::forward, onSpeed = vm.playback::speed, onQueue = { showQueue = true }, onRetry = vm.playback::retry)
         } else {
             Scaffold(containerColor = Color.Transparent, snackbarHost = { SnackbarHost(snackbar) },
@@ -150,6 +150,9 @@ import org.sonora.music.playback.PlayerSnapshot
                         Text("${player.queue.size} tracks", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     TextButton(onClick = { vm.playback.clear(); showQueue = false }, enabled = player.queue.isNotEmpty()) { Text("Clear queue") }
+                }
+                Box(Modifier.padding(horizontal = 24.dp)) {
+                    ShuffleUpcomingButton(player.canShuffleUpcoming, vm.playback::shuffleUpcoming)
                 }
                 QueueAutoplayControl()
                 if (!radio.active) Text("Manual queue: no automatic tracks will be added.", Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodySmall)
@@ -242,14 +245,14 @@ import org.sonora.music.playback.PlayerSnapshot
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun FullPlayer(player: PlayerSnapshot, error: String?, favorite: Boolean, onClose: () -> Unit, onFavorite: () -> Unit,
-    onToggle: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onSeek: (Long) -> Unit, onRewind: () -> Unit, onForward: () -> Unit, onSpeed: (Float) -> Unit, onQueue: () -> Unit, onRetry: () -> Unit) {
+    onToggle: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onShuffle: () -> Unit, onSeek: (Long) -> Unit, onRewind: () -> Unit, onForward: () -> Unit, onSpeed: (Float) -> Unit, onQueue: () -> Unit, onRetry: () -> Unit) {
     val track = player.current ?: return
     val addToPlaylist = LocalAddToPlaylist.current
     var drag by remember(track.url) { mutableStateOf<Float?>(null) }
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
         val artworkSize = minOf(
             maxHeight * 0.42f,
-            (maxHeight - 374.dp).coerceAtLeast(88.dp),
+            (maxHeight - 422.dp).coerceAtLeast(88.dp),
             (maxWidth - 40.dp).coerceAtLeast(1.dp),
             400.dp,
         )
@@ -277,6 +280,7 @@ import org.sonora.music.playback.PlayerSnapshot
                 val actions = LocalDiscoveryActions.current
                 val isMusic = !org.sonora.music.domain.PodcastLinks.isEpisode(track.url)
                 FlowRow {
+                    ShuffleUpcomingButton(player.canShuffleUpcoming, onShuffle)
                     if (isMusic) AutoplayControl(actions.autoplay, actions.setAutoplay)
                     TextButton(onClick = { addToPlaylist(track) }) {
                         Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null)
@@ -332,6 +336,14 @@ import org.sonora.music.playback.PlayerSnapshot
                 }
             }
         }
+    }
+}
+
+@Composable private fun ShuffleUpcomingButton(enabled: Boolean, onClick: () -> Unit) {
+    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp)) {
+        Icon(Icons.Rounded.Shuffle, null)
+        Spacer(Modifier.width(4.dp))
+        Text("Shuffle up next")
     }
 }
 

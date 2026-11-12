@@ -22,7 +22,10 @@ data class PlayerSnapshot(
     val positionMs: Long = 0,
     val durationMs: Long = 0,
     val speed: Float = 1f
-) { val current: Track? get() = queue.getOrNull(index) }
+) {
+    val current: Track? get() = queue.getOrNull(index)
+    val canShuffleUpcoming: Boolean get() = connected && current != null && queue.lastIndex - index > 1
+}
 fun Track.toMediaItem(): MediaItem = MediaItem.Builder().setMediaId(url).setUri(url)
     .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist)
         .setArtworkUri(artwork.takeIf { it.isNotBlank() }?.toUri())
@@ -32,6 +35,7 @@ fun MediaItem.toTrack() = Track(mediaId, mediaMetadata.title?.toString().orEmpty
     mediaMetadata.extras?.getLong("durationSeconds") ?: 0)
 
 const val MARK_PODCAST_PLAYED = "org.sonora.music.MARK_PODCAST_PLAYED"
+const val SHUFFLE_UPCOMING = "org.sonora.music.SHUFFLE_UPCOMING"
 
 const val PLAY_RADIO = "org.sonora.music.PLAY_RADIO"
 const val RADIO_RETRY = "org.sonora.music.RADIO_RETRY"

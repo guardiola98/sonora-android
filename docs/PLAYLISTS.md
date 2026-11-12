@@ -9,3 +9,7 @@ Inside a playlist, hold a drag handle and move it vertically. Near the top/botto
 Imported playlists are editable. Reimporting merges missing songs, keeping your custom name and existing order. Concurrent imports during a reorder retain newly added songs at the end. None of these actions modifies your YouTube account.
 
 The playback queue is independent of playlist edits: changing a saved playlist does not unexpectedly change the queue already playing. Play all again to load the updated order.
+
+## Shuffle
+
+Use the Shuffle icon beside **Play all** to start a playlist in random order. While listening, **Shuffle up next** in the full player or **Up next** queue shuffles only the pending tracks. It keeps the current track, position, play/pause state and already-played order. The button needs at least two pending tracks. Tap again for another random order; saved playlist order is unchanged. The displayed queue, Next button and restored queue follow the shuffled order.

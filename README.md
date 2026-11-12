@@ -4,7 +4,7 @@
 
 An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account or API key is required for playback. No ads or analytics. Optional temporary playlist authorization requires distributor OAuth setup.
 
-**Current beta: 0.7.2-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
+**Current beta: 0.7.3-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
 <p>
   <img src="docs/screenshots/discovery-home.png" width="240" alt="Personalized Sonora Home on Android 15" />
@@ -16,7 +16,7 @@ Actual emulator captures from the signed 0.5 beta, using public music searches a
 
 ## Install
 
-Download the [signed Sonora 0.7.2 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.7.2-beta01/sonora-0.7.2-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
+Download the [signed Sonora 0.7.3 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.7.3-beta01/sonora-0.7.3-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
 
 This release uses a **persistent signing key**. Future releases using this key can update it without uninstalling or clearing the library. Earlier **debug** builds can have different certificates and cannot necessarily be upgraded in place. Do not uninstall an older build with data you need unless you have a usable backup. A new signing key cannot grant access to another application's private data. See [release signing and upgrade notes](docs/RELEASING.md).
 
@@ -41,7 +41,7 @@ GitHub Actions builds a versioned debug artifact for developers and, after succe
 - Faster starts: prepare likely tracks and the next queue item, with bounded audio prefixes kept only in RAM. Keeps the same audio quality; disable extra data use in About → Faster playback starts. [Strategy and measured results](docs/STARTUP.md).
 - Persistent mini-player across Home, Search, Library and Podcasts.
 - `MediaSessionService` with automatic media notification, lock-screen controls, audio focus and headphone-disconnect handling.
-- Queue: play a list, append, jump, remove, move up and clear; restore the list, selected song and last saved position after process death/reboot, paused until you press Play.
+- Queue: play a list, append, jump, remove, move up and clear; shuffle pending tracks directly from the full player or queue without interrupting the current track; restore the list, selected song and last saved position after process death/reboot, paused until you press Play.
 - Create and rename local playlists, add/remove songs, drag handles to reorder with edge scrolling, and accessible move up/down menu actions. Imported playlists can be edited too. Shuffle starts a randomized manual queue without changing saved playlist order; public collections can shuffle their currently loaded tracks.
 - Export a versioned Sonora JSON backup of favorites, all history, playlists (including empty ones), podcast subscriptions and episode progress; preview and merge backups atomically without deleting existing data.
 - Room favorites, listening history and imported playlists; history starts only when the player reports playback.

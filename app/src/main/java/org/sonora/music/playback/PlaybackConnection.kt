@@ -79,6 +79,7 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
     fun hideFromRadio(track: Track) { controller?.sendCustomCommand(SessionCommand(RADIO_HIDE, Bundle.EMPTY), Bundle().apply { putString("reference", track.url) }) }
     /** Shuffle the playback queue, preserving the saved playlist's order and manual queue policy. */
     fun shuffle(tracks: List<Track>) = play(tracks.shuffled(), 0)
+    fun shuffleUpcoming() { controller?.sendCustomCommand(SessionCommand(SHUFFLE_UPCOMING, Bundle.EMPTY), Bundle.EMPTY) }
     fun rewind() { controller?.seekBack() }
     fun forward() { controller?.seekForward() }
     fun enqueue(track: Track) { controller?.apply { addMediaItem(track.toMediaItem()); if (playbackState == Player.STATE_IDLE) prepare() } }

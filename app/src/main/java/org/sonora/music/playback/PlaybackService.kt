@@ -163,10 +163,18 @@ class PlaybackService : MediaSessionService() {
                     if (controller.packageName != packageName) return base
                     return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                         .setAvailablePlayerCommands(base.availablePlayerCommands)
-                        .setAvailableSessionCommands(base.availableSessionCommands.buildUpon().add(SessionCommand(MARK_PODCAST_PLAYED, Bundle.EMPTY)).add(SessionCommand(PLAY_RADIO, Bundle.EMPTY)).add(SessionCommand(RADIO_RETRY, Bundle.EMPTY)).add(SessionCommand(RADIO_HIDE, Bundle.EMPTY)).build()).build()
+                        .setAvailableSessionCommands(base.availableSessionCommands.buildUpon().add(SessionCommand(MARK_PODCAST_PLAYED, Bundle.EMPTY)).add(SessionCommand(SHUFFLE_UPCOMING, Bundle.EMPTY)).add(SessionCommand(PLAY_RADIO, Bundle.EMPTY)).add(SessionCommand(RADIO_RETRY, Bundle.EMPTY)).add(SessionCommand(RADIO_HIDE, Bundle.EMPTY)).build()).build()
                 }
                 override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo,
                     customCommand: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
+                    if (customCommand.customAction == SHUFFLE_UPCOMING) {
+                        if (controller.packageName != packageName) return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
+                        // Use the service's current index, even if playback advanced after the tap.
+                        // Keep radio provenance and replenishment while changing its pending order.
+                        radio.replacing { player.shuffleUpcoming() }
+                        saveQueue()
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
                     if (customCommand.customAction in setOf(PLAY_RADIO, RADIO_RETRY, RADIO_HIDE)) {
                         if (controller.packageName != packageName) return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
                         try {

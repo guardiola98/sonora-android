@@ -1,0 +1,33 @@
+{
+  "version": "0.7.3-beta01",
+  "versionCode": 11,
+  "unit": {
+    "tests": 142,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 3
+  },
+  "lint": {
+    "Warning": 8
+  },
+  "device": {
+    "api": 35,
+    "normalPassed": 5,
+    "liveSkipped": 2,
+    "compactDp": [
+      320,
+      570
+    ],
+    "compactPassed": 2
+  },
+  "runtimeSha256": {
+    "classes.dex": "6033293b59cb6797ca67737df0e841783d3fd651569071e992ee8ae7133bba33",
+    "classes2.dex": "d790b5d2e8dca7131a973b1781433223ad87f48bc651304cb0f59a9d48910831",
+    "classes3.dex": "e7d09f904262792033a635cb444a0beac639e9c401df45f39639b1c6dd4c45d5",
+    "classes4.dex": "53e2bfa50846013ea825aae4fab2e9fbc2b2216577332153f7fb7e66ec60514a",
+    "classes5.dex": "fc8c3938f4ab552a0223da34dc85cdefff4c3722584440a0e81ad2b497015370",
+    "classes6.dex": "a8cb9e9e35521553ca05df38eeed735d7a128c314088b639eff6082ce7f2bd87",
+    "AndroidManifest.xml": "d7dddf25cd96c8138615ec2ce4f179c6fd389c50590aa7e12da941b8a8af338e",
+    "resources.arsc": "8636ea880f61757489d5e73699c5b4ab7ccffdf2c4ae8dc9e37adfc15621e1ca"
+  }
+}

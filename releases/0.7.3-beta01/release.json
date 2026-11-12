@@ -1,0 +1,9 @@
+{
+  "version": "0.7.3-beta01",
+  "versionCode": 11,
+  "sha256": "43cf845155e9882d498286ecd296015a49435557104dd341bb11fa9d9a55f240",
+  "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2",
+  "sourceCommit": "89b917468b38b280e3b9c44bdd11bf301775fda4",
+  "notes": "The full player and Up next queue now include a Shuffle up next button. It randomly reorders pending tracks without restarting or interrupting the current track, changing its position, or changing play/pause state. Previously played tracks and saved playlist order stay unchanged.\n\nThe button works with music and podcast queues and is enabled when at least two items remain after the current item. Tap again to reshuffle; this is an action, not a persistent shuffle mode. The displayed queue, Next button and restored queue all follow the new order. Radio keeps its existing autoplay setting.\n\nUses the existing signing key, preserving playlists, favorites, history, podcast progress and backups when updating.",
+  "sizeBytes": 17567598
+}

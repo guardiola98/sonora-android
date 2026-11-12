@@ -103,7 +103,7 @@ import org.sonora.music.playback.PlayerSnapshot
             FullPlayer(player, playerError, favoriteIds.contains(player.current!!.url),
                 onClose = { showPlayer = false }, onFavorite = { vm.favorite(player.current!!) },
                 onToggle = vm.playback::toggle, onNext = vm.playback::next, onPrevious = vm.playback::previous,
-                onSeek = vm.playback::seek, onSpeed = vm.playback::speed, onQueue = { showQueue = true }, onRetry = vm.playback::retry)
+                onSeek = vm.playback::seek, onRewind = vm.playback::rewind, onForward = vm.playback::forward, onSpeed = vm.playback::speed, onQueue = { showQueue = true }, onRetry = vm.playback::retry)
         } else {
             Scaffold(containerColor = Color.Transparent, snackbarHost = { SnackbarHost(snackbar) },
                 topBar = { TopAppBar(title = {
@@ -242,7 +242,7 @@ import org.sonora.music.playback.PlayerSnapshot
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun FullPlayer(player: PlayerSnapshot, error: String?, favorite: Boolean, onClose: () -> Unit, onFavorite: () -> Unit,
-    onToggle: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onSeek: (Long) -> Unit, onSpeed: (Float) -> Unit, onQueue: () -> Unit, onRetry: () -> Unit) {
+    onToggle: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onSeek: (Long) -> Unit, onRewind: () -> Unit, onForward: () -> Unit, onSpeed: (Float) -> Unit, onQueue: () -> Unit, onRetry: () -> Unit) {
     val track = player.current ?: return
     val addToPlaylist = LocalAddToPlaylist.current
     var drag by remember(track.url) { mutableStateOf<Float?>(null) }
@@ -293,9 +293,19 @@ import org.sonora.music.playback.PlayerSnapshot
                     Text(formatDuration(player.durationMs / 1000), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous track or restart", Modifier.size(36.dp)) }
+                    IconButton(onClick = onPrevious, modifier = Modifier.size(if (isMusic) 56.dp else 48.dp)) {
+                        Icon(Icons.Rounded.SkipPrevious, if (isMusic) "Previous track or restart" else "Previous episode or restart", Modifier.size(36.dp))
+                    }
+                    if (!isMusic) FilledTonalIconButton(onClick = onRewind, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Rounded.Replay10, "Rewind 10 seconds", Modifier.size(30.dp))
+                    }
                     FilledIconButton(onClick = onToggle, modifier = Modifier.size(80.dp)) { Icon(if (player.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (player.playing) "Pause" else "Play", Modifier.size(42.dp)) }
-                    IconButton(onClick = onNext, enabled = player.index < player.queue.lastIndex, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipNext, "Next track", Modifier.size(36.dp)) }
+                    if (!isMusic) FilledTonalIconButton(onClick = onForward, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Rounded.Forward10, "Forward 10 seconds", Modifier.size(30.dp))
+                    }
+                    IconButton(onClick = onNext, enabled = player.index < player.queue.lastIndex, modifier = Modifier.size(if (isMusic) 56.dp else 48.dp)) {
+                        Icon(Icons.Rounded.SkipNext, if (isMusic) "Next track" else "Next episode", Modifier.size(36.dp))
+                    }
                 }
                 if (isMusic) {
                     FlowRow {
@@ -303,8 +313,7 @@ import org.sonora.music.playback.PlayerSnapshot
                         TextButton(onClick = { actions.explain(track) }) { Text("Music details") }
                     }
                 } else {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        OutlinedButton(onClick = { onSeek((player.positionMs - 15_000).coerceAtLeast(0)) }) { Text("−15 sec") }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                         var speedMenu by remember { mutableStateOf(false) }
                         Box {
                             OutlinedButton(onClick = { speedMenu = true }) { Text("${player.speed}×") }
@@ -314,7 +323,6 @@ import org.sonora.music.playback.PlayerSnapshot
                                 }
                             }
                         }
-                        OutlinedButton(onClick = { onSeek((player.positionMs + 30_000).coerceAtMost(player.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE)) }) { Text("+30 sec") }
                     }
                 }
                 if (player.buffering) LinearProgressIndicator(Modifier.fillMaxWidth())

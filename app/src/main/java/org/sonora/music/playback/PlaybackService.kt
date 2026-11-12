@@ -63,7 +63,7 @@ class PlaybackService : MediaSessionService() {
                 spec.withUri(stream.url.toUri())
             } else spec
         }
-        player = ExoPlayer.Builder(this).setLoadControl(DefaultLoadControl.Builder()
+        player = ExoPlayer.Builder(this).setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(10_000).setLoadControl(DefaultLoadControl.Builder()
             .setBufferDurationsMs(15_000, 50_000, 250, 2_000).setBackBuffer(10_000, false).build()).setMediaSourceFactory(DefaultMediaSourceFactory(resolving)).build().apply {
             setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)

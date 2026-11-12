@@ -242,8 +242,8 @@ internal fun AutoplayControl(checked: Boolean, onCheckedChange: (Boolean) -> Uni
                     FilterChip(state.allVersions, { vm.search.showVersions(!state.allVersions) }, label = { Text(if (state.hiddenVersions > 0) "All versions (+${state.hiddenVersions})" else "All versions") })
                 }
             }
-            if (!state.searched && !state.loading && state.query.isBlank()) item { Text("Search your library and public music sources. Channels are labeled separately from verified artists.", Modifier.padding(24.dp)) }
-            if (state.searched && !state.loading && state.ranked.isEmpty()) item { Text(if (state.kind == CatalogKind.ARTISTS) "No verified artist credits match yet. Optional MusicBrainz enrichment is available in Discovery settings; Channels search also works without it." else "No results yet. Try another query or category.", Modifier.padding(24.dp)) }
+            if (!state.searched && !state.loading && state.query.isBlank()) item { Text("Search your library and public music sources. Artists from the music catalog and verified local credits are separate from YouTube channels. Tap an artist to find songs.", Modifier.padding(24.dp)) }
+            if (state.searched && !state.loading && state.ranked.isEmpty()) item { Text(if (state.kind == CatalogKind.ARTISTS) "No artists found. Try another name. Artists are searched in the music catalog and your verified local credits." else "No results yet. Try another query or category.", Modifier.padding(24.dp)) }
             items(state.ranked, key = { it.entry.url }) { result ->
                 val entry = result.entry; val track = entry.track
                 if (track != null) Column {
@@ -252,7 +252,7 @@ internal fun AutoplayControl(checked: Boolean, onCheckedChange: (Boolean) -> Uni
                 } else ListItem(headlineContent = { Text(entry.title, maxLines = 2, overflow = TextOverflow.Ellipsis) }, supportingContent = { Text("${entry.kind.label} · ${entry.credit}") },
                     leadingContent = { Artwork(Track(entry.url, entry.title, entry.credit, entry.artwork, 0), Modifier.size(64.dp)) },
                     modifier = Modifier.clickable {
-                        if (entry.kind in setOf(CatalogKind.ARTISTS, CatalogKind.CHANNELS) || entry.url.startsWith("https://musicbrainz.org/")) { vm.search.select(CatalogKind.SONGS); onSearch(entry.title) }
+                        if (entry.kind in setOf(CatalogKind.ARTISTS, CatalogKind.CHANNELS) || entry.url.startsWith("https://musicbrainz.org/")) { keyboard?.hide(); vm.search.songsBy(entry.title) }
                         else vm.collection.open(entry)
                     })
             }
@@ -268,8 +268,11 @@ internal fun AutoplayControl(checked: Boolean, onCheckedChange: (Boolean) -> Uni
         Column(Modifier.fillMaxHeight(.9f)) {
             Text(state.entry?.title.orEmpty(), Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.headlineSmall)
             Text("${state.tracks.size} loaded tracks", Modifier.padding(horizontal = 24.dp), style = MaterialTheme.typography.bodySmall)
-            Row(Modifier.padding(horizontal = 24.dp)) {
+            FlowRow(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.Center) {
                 Button(onClick = { vm.playback.play(state.tracks, 0) }, enabled = connected && state.tracks.isNotEmpty()) { Text("Play loaded tracks") }
+                IconButton(onClick = { vm.playback.shuffle(state.tracks) }, enabled = connected && state.tracks.isNotEmpty()) {
+                    Icon(Icons.Rounded.Shuffle, "Shuffle loaded tracks")
+                }
                 TextButton(onClick = { vm.saveCollection() }, enabled = state.tracks.isNotEmpty()) { Text("Save loaded") }
             }
             if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())

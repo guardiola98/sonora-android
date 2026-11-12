@@ -46,7 +46,7 @@ class SearchRanker {
             val title = MusicText.normalize(entry.title)
             val haystack = MusicText.tokens(entry.title + " " + entry.credit)
             val coverage = if (words.isEmpty()) 0.0 else words.intersect(haystack).size.toDouble() / words.size
-            val variants = MusicText.variants(entry.title)
+            val variants = if (entry.track != null) MusicText.variants(entry.title) else emptySet()
             val reasons = mutableListOf<String>()
             var score = coverage * 55
             if (title == q) { score += 25; reasons += "Exact title" }

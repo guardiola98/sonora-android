@@ -1,0 +1,63 @@
+{
+  "version": "0.7.2-beta01",
+  "versionCode": 10,
+  "date": "2026-11-12",
+  "unit": {
+    "tests": 140,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 3
+  },
+  "lint": {
+    "Error": 0,
+    "Warning": 28
+  },
+  "liveArtistSource": {
+    "passed": true,
+    "output": "Live artist: Obrint Pas; count=5; next=false\nLive songs for artist: 20; first=La Flama"
+  },
+  "emulatorApi": 35,
+  "installedAsUpgradeFrom": "0.7.1-beta01",
+  "device": [
+    {
+      "class": "Release072DeviceTest",
+      "passed": true,
+      "passedChecks": 3,
+      "skippedChecks": 0
+    },
+    {
+      "class": "PlaybackDeviceTest",
+      "passed": true,
+      "passedChecks": 2,
+      "skippedChecks": 1
+    },
+    {
+      "class": "LibraryFeaturesDeviceTest",
+      "passed": true,
+      "passedChecks": 1,
+      "skippedChecks": 0
+    },
+    {
+      "class": "ImportDeviceTest",
+      "passed": true,
+      "passedChecks": 1,
+      "skippedChecks": 0
+    }
+  ],
+  "compactPodcastRepeat": {
+    "passed": true,
+    "widthDp": 320,
+    "heightDp": 570
+  },
+  "testedRuntime": {
+    "classes.dex": "6033293b59cb6797ca67737df0e841783d3fd651569071e992ee8ae7133bba33",
+    "classes2.dex": "d790b5d2e8dca7131a973b1781433223ad87f48bc651304cb0f59a9d48910831",
+    "classes3.dex": "e7d09f904262792033a635cb444a0beac639e9c401df45f39639b1c6dd4c45d5",
+    "classes4.dex": "53e2bfa50846013ea825aae4fab2e9fbc2b2216577332153f7fb7e66ec60514a",
+    "classes5.dex": "fc8c3938f4ab552a0223da34dc85cdefff4c3722584440a0e81ad2b497015370",
+    "classes6.dex": "95acc41f19b79f4f4bb58a6289251c18f7d6bcfe52a0a7ec042e384cd61077ff",
+    "AndroidManifest.xml": "eb9a915879f1236e5899cb089cd2e3ccd7bd1db56d663f90ba630fc3ab2b70cc",
+    "resources.arsc": "8636ea880f61757489d5e73699c5b4ab7ccffdf2c4ae8dc9e37adfc15621e1ca"
+  },
+  "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2"
+}

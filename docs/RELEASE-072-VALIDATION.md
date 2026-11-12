@@ -1,0 +1,36 @@
+# Sonora 0.7.2-beta01 validation
+
+This release adds playlist shuffle, symmetric ten-second podcast controls, and remote artist search. It retains Room schema 5, backup format 2, existing dependencies and the persistent release signing key. OAuth configuration is unchanged.
+
+## Behavior and limits
+
+- **Shuffle playlist** starts a newly shuffled manual queue containing the playlist's tracks. The saved playlist order is unchanged. Repeated shuffles may legitimately produce the same order. Existing manual-queue autoplay policy remains in force. Public collections offer **Shuffle loaded tracks**; unloaded pages are not silently included.
+- Podcast buttons use MediaController `seekBack` / `seekForward` with Media3 increments of 10,000 ms. The controller's current position handles consecutive taps and boundaries. Round ten-second arrow icons sit between previous/next episode and play/pause. Speed remains below. Previous retains the player's previous-or-restart semantics.
+- **Search → Artists** combines the dedicated YouTube Music artist catalog with verified local MusicBrainz credits. No account, new key or metadata-enrichment opt-in is required for remote results. Selecting an artist starts a song search for that name; it is not an exhaustive verified discography. Ordinary channels and uploader names are not promoted to artist identities. Source failures remain visible with retry and any local matches. [Implementation and upstream API](DISCOVERY.md).
+
+## Checks
+
+Validated on 12 November 2026 using JDK 21, SDK 36/build-tools 35.0.0 and the existing API 35 x86_64 emulator.
+
+- `assembleDebug`, `testDebugUnitTest`, `lintDebug`, `assembleRelease`, `assembleReleaseAndroidTest`: passed. **137 deterministic unit tests passed; 3 opt-in live tests skipped in the full suite. Lint: 0 errors, 28 existing warnings.**
+- Ran `SONORA_LIVE_TESTS=true ./gradlew testDebugUnitTest --tests org.sonora.music.LiveArtistSourceTest` separately: passed against the real public source. The request returned five artist results including Obrint Pas, then twenty songs including La Flama. That artist response had no continuation page; real artist pagination was therefore not exercised. Generic pagination and cancellation remain covered by deterministic tests.
+- New unit checks distinguish dedicated music artists from ordinary channels, prevent artist names being treated as alternate song versions, and ensure artist selection cancels old artist pagination and sends one song query.
+- The signed, non-debuggable code-10 APK was installed with `adb install -r` over signed 0.7.1, without uninstalling or clearing the library. Its signing certificate matches the persistent pinned certificate. No signing material or OAuth configuration changed.
+
+**Seven Android checks passed, with one opt-in live YouTube playback check skipped.** The new-feature checks drive the actual playlist Shuffle button, compare every queue entry and original Room playlist order, open a real remote artist row and song results, and decode generated PCM through the production Media3 service. Podcast checks verify both ten-second increments, rapid repeated forward commands, the start/last-episode end bounds, next/previous controls and the five controls' ordering/alignment. Existing Activity reopening, PCM/session/seek/queue/background playback, library editing/backups and Takeout import/reimport checks also passed.
+
+The podcast check additionally passed at **320 × 570 dp**, using the same signed APK. Earlier attempts exposed test-harness assumptions: independent controllers update asynchronously, a history suggestion can share an artist's name, and seeking to the end of an earlier queue item may advance to the next episode. The tests now await actual controller updates, select the remote artist row by its credit, and check the end bound on the last episode. Unique episode IDs and ordered progress-writer cleanup also isolate each run from previously saved resume positions. No production code was changed to satisfy those test setup corrections.
+
+[Recorded results and tested DEX/manifest/resource hashes](measurements/release-0.7.2/checks.json). Actual emulator captures: [shuffle](screenshots/release-072-playlist-shuffle.png), [podcast controls](screenshots/release-072-podcast-controls.png), [compact podcast controls](screenshots/release-072-podcast-compact.png), [remote artists](screenshots/release-072-artist-search.png), [artist songs](screenshots/release-072-artist-songs.png). Playlist/podcast screenshots use explicitly labeled test fixtures; artist/song results come from real public queries. No fixture catalog or audio is shipped in the app.
+
+The emulator's host audio output was disabled. PCM decoding and position progression are real player checks, not human listening or proof of real-RSS seeking accuracy. Real YouTube playback, new-account OAuth, physical-device audio/lock-screen behavior and the complete in-app Android installer flow were not revalidated in this release. Existing import/provider limitations remain documented. The final clean-commit release must retain the tested DEX, manifest and resources before publication through the existing append-only `apk-releases` channel.
+
+## Physical-phone acceptance checklist
+
+1. Install this official APK over the previous signed release without uninstalling. Check favorites, imported/created playlists and order, history, subscriptions, queue and backup export/restore.
+2. Open a playlist with several tracks. Tap Shuffle, listen, inspect the queue and use Next/Previous. Every track should appear once, the first should start automatically, and returning to the playlist should show its original order. Test one-track and empty lists, imported lists, and a large list. Confirm manual queues do not receive radio tracks. Public collection shuffle includes only the displayed loaded pages.
+3. Open a real podcast episode. Confirm the five controls are arranged previous / rewind ten / play-pause / forward ten / next. Try single and rapid repeated taps, near the start and end, and verify the seek bar and resumed position. Check 0.75–2× speed, next/previous episodes, rotation, a narrow screen, large system font and TalkBack descriptions.
+4. Play a podcast in the background, lock/unlock, reconnect headphones and resume after process death. Listen for audible quality; emulator decoder progression alone does not establish sound output or real-feed seeking accuracy.
+5. In Search select Artists, search an accented/local name and a popular artist, and tap a result. Verify actual song results, play one, favorite it and add it to a playlist. Try Live as an artist name: it should not receive an alternate-song-version penalty. Channels must remain separately labeled. Search results are supplied by the public source and may include similarly named artists or recordings.
+6. Change queries/categories quickly, load more when available, return from songs to Artists, switch offline and retry. Verify no late artist page replaces newer song results, and no fabricated artists appear when a source fails.
+7. Exercise About → Updates through the Android installer on a physical phone. Confirm the release version and retained library afterward.

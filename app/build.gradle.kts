@@ -19,8 +19,8 @@ android {
         applicationId = "org.sonora.music"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.7.1-beta01"
+        versionCode = 10
+        versionName = "0.7.2-beta01"
         val releaseCertificate = rootProject.file("signing/certificate.sha256").readText().trim()
         require(releaseCertificate.matches(Regex("[0-9a-f]{64}")))
         buildConfigField("String", "OFFICIAL_CERTIFICATE_SHA256", "\"$releaseCertificate\"")

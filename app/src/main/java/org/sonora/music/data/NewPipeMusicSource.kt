@@ -34,20 +34,27 @@ class NewPipeMusicSource : MusicSource, LibraryImportSource, MusicCatalogSource 
         val url = YouTubeLinks.track(item.url) ?: return null
         return Track(url, item.name, item.uploaderName.orEmpty(), item.thumbnails.maxByOrNull { it.height }?.url.orEmpty(), item.duration.coerceAtLeast(0))
     }
-    private fun catalog(items: List<org.schabi.newpipe.extractor.InfoItem>, kind: CatalogKind, musical: Boolean): List<CatalogEntry> = items.mapNotNull { item ->
+    internal fun catalog(items: List<org.schabi.newpipe.extractor.InfoItem>, kind: CatalogKind, musical: Boolean): List<CatalogEntry> = items.mapNotNull { item ->
         when (item) {
             is StreamInfoItem -> streamTrack(item)?.let { CatalogEntry(it.url, it.title, it.artist, it.artwork, CatalogKind.SONGS, it, musical) }
             is org.schabi.newpipe.extractor.playlist.PlaylistInfoItem -> YouTubeLinks.playlist(item.url)?.let { url ->
                 CatalogEntry(url, item.name, item.uploaderName.orEmpty(), item.thumbnails.maxByOrNull { it.height }?.url.orEmpty(),
                     if (kind == CatalogKind.ALBUMS && musical) CatalogKind.ALBUMS else CatalogKind.PLAYLISTS, musical = musical) }
-            is org.schabi.newpipe.extractor.channel.ChannelInfoItem -> CatalogEntry(item.url, item.name, "YouTube channel", item.thumbnails.maxByOrNull { it.height }?.url.orEmpty(), CatalogKind.CHANNELS)
+            is org.schabi.newpipe.extractor.channel.ChannelInfoItem -> {
+                // Only the dedicated music_artists response identifies an artist. A regular
+                // channel (or a stream uploader) is not evidence of musical artist identity.
+                val artist = kind == CatalogKind.ARTISTS && musical
+                CatalogEntry(item.url, item.name, if (artist) "YouTube Music artist" else "YouTube channel",
+                    item.thumbnails.maxByOrNull { it.height }?.url.orEmpty(),
+                    if (artist) CatalogKind.ARTISTS else CatalogKind.CHANNELS, musical = artist)
+            }
             else -> null
         }
     }.distinctBy { it.url }
     override suspend fun searchPage(query: String, kind: CatalogKind, cursor: String?): CatalogPage {
         val text = query.trim().take(200)
         if (text.isBlank()) return CatalogPage(emptyList())
-        val desired = when (kind) { CatalogKind.ARTISTS -> return CatalogPage(emptyList(), notice = "Artists shown here have verified MusicBrainz credits in your library. Unverified source names appear under Channels."); CatalogKind.SONGS -> "music_songs"; CatalogKind.ALBUMS -> "music_albums"; CatalogKind.PLAYLISTS -> "music_playlists"; CatalogKind.CHANNELS -> "channels" }
+        val desired = when (kind) { CatalogKind.ARTISTS -> "music_artists"; CatalogKind.SONGS -> "music_songs"; CatalogKind.ALBUMS -> "music_albums"; CatalogKind.PLAYLISTS -> "music_playlists"; CatalogKind.CHANNELS -> "channels" }
         suspend fun load(filter: String, notice: String? = null): CatalogPage = extract {
             val service = ServiceList.YouTube
             val next = cursor?.let { continuation(it, text, false) }

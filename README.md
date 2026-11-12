@@ -4,7 +4,7 @@
 
 An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account or API key is required for playback. No ads or analytics. Optional temporary playlist authorization requires distributor OAuth setup.
 
-**Current beta: 0.7.1-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
+**Current beta: 0.7.2-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
 <p>
   <img src="docs/screenshots/discovery-home.png" width="240" alt="Personalized Sonora Home on Android 15" />
@@ -16,7 +16,7 @@ Actual emulator captures from the signed 0.5 beta, using public music searches a
 
 ## Install
 
-Download the [signed Sonora 0.7.1 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.7.1-beta01/sonora-0.7.1-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
+Download the [signed Sonora 0.7.2 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.7.2-beta01/sonora-0.7.2-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
 
 This release uses a **persistent signing key**. Future releases using this key can update it without uninstalling or clearing the library. Earlier **debug** builds can have different certificates and cannot necessarily be upgraded in place. Do not uninstall an older build with data you need unless you have a usable backup. A new signing key cannot grant access to another application's private data. See [release signing and upgrade notes](docs/RELEASING.md).
 
@@ -24,14 +24,15 @@ Android may ask you to allow installation from the app opening the APK. Search f
 
 From Sonora 0.6, **About → Updates** checks the official distribution channel and hands verified updates to Android for confirmation. See [in-app updates](docs/UPDATES.md) for signing, publication and validation.
 
-GitHub Actions also builds a `sonora-0.7.0-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
+GitHub Actions also builds a `sonora-0.7.2-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
 
 ## Features
 
 - Dark Material 3 interface with original Sonora colors and icon, large artwork and subtle screen transitions.
 - Podcasts: search Apple’s public directory or paste a public HTTPS RSS feed; subscribe/unsubscribe, refresh episodes, and browse previously loaded descriptions offline.
-- Resume episodes from saved positions, mark played/unplayed, seek −15/+30 seconds and choose 0.75–2× speed. Podcast episodes share the queue, favorites, playlists and background player.
+- Resume episodes from saved positions, mark played/unplayed, seek −10/+10 seconds with round controls beside previous/next episode and choose 0.75–2× speed. Podcast episodes share the queue, favorites, playlists and background player.
 - Personalized Home: resume the queue, recent listening, favorites, real discovery shelves, playlists and evidence-backed artist/album groups.
+- Remote artist search in the YouTube Music catalog, alongside verified local artist credits. Tap an artist to search their songs; ordinary channels remain separate. No account or metadata opt-in is required.
 - Music search with debounce, cancellation, local results, persistent history, optional online suggestions, categories, pagination, explainable ranking and an All versions option.
 - **Sonora Radio:** a single song can build and replenish a related queue in the background. Manual queues are respected; Autoplay can be disabled without stopping the current song.
 - Track-specific **Not interested**, **More music like this**, recommendation reasons, and local learning from favorites, actual listening, completions and gentle skip/removal signals.
@@ -41,7 +42,7 @@ GitHub Actions also builds a `sonora-0.7.0-beta01-debug` artifact for developers
 - Persistent mini-player across Home, Search, Library and Podcasts.
 - `MediaSessionService` with automatic media notification, lock-screen controls, audio focus and headphone-disconnect handling.
 - Queue: play a list, append, jump, remove, move up and clear; restore the list, selected song and last saved position after process death/reboot, paused until you press Play.
-- Create and rename local playlists, add/remove songs, drag handles to reorder with edge scrolling, and accessible move up/down menu actions. Imported playlists can be edited too.
+- Create and rename local playlists, add/remove songs, drag handles to reorder with edge scrolling, and accessible move up/down menu actions. Imported playlists can be edited too. Shuffle starts a randomized manual queue without changing saved playlist order; public collections can shuffle their currently loaded tracks.
 - Export a versioned Sonora JSON backup of favorites, all history, playlists (including empty ones), podcast subscriptions and episode progress; preview and merge backups atomically without deleting existing data.
 - Room favorites, listening history and imported playlists; history starts only when the player reports playback.
 - Temporary account playlist import: browser PKCE, multi-selection, conservative Spotify version review and early credential disposal. **Requires OAuth app registration; Google additionally needs the optional HTTPS broker and resolution of its API policy restrictions on permanent copies/background players.** Not enabled in an unconfigured build. [Setup, provider restrictions and privacy](docs/OAUTH-IMPORT.md).

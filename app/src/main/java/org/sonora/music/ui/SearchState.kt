@@ -35,12 +35,14 @@ class SearchPresenter(private val source: MusicSource, private val scope: Corout
         job = scope.launch { delay(450); perform(query, request, false) }
     }
     private fun cancel() { generation++; job?.cancel(); suggestionJob?.cancel(); pageJob?.cancel(); visited.clear() }
-    fun search(query: String) {
+    fun search(query: String, kind: CatalogKind = mutable.value.kind) {
+        mutable.value = mutable.value.copy(kind = kind)
         cancel(); val request = generation
         if (query.isBlank()) { raw = emptyList(); mutable.value = SearchState(kind = mutable.value.kind); return }
         job = scope.launch { perform(query, request, true) }
     }
-    fun select(kind: CatalogKind) { mutable.value = mutable.value.copy(kind = kind); if (mutable.value.query.isNotBlank()) search(mutable.value.query) }
+    fun select(kind: CatalogKind) = search(mutable.value.query, kind)
+    fun songsBy(artist: String) = search(artist, CatalogKind.SONGS)
     fun showVersions(show: Boolean) { mutable.value = mutable.value.copy(allVersions = show); publish() }
     private suspend fun perform(query: String, request: Int, remember: Boolean) {
         val text = query.trim().take(200); val kind = mutable.value.kind

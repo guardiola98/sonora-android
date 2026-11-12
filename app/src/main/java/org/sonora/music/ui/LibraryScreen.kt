@@ -54,6 +54,9 @@ import org.sonora.music.domain.Track
         if (selected != null) {
             Row(Modifier.padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
                 FilledTonalButton(onClick = { vm.playback.play(tracks, 0) }, enabled = connected && tracks.isNotEmpty()) { Icon(Icons.Rounded.PlayArrow, null); Text("Play all") }
+                FilledTonalIconButton(onClick = { vm.playback.shuffle(tracks) }, enabled = connected && tracks.isNotEmpty(), modifier = Modifier.padding(start = 8.dp)) {
+                    Icon(Icons.Rounded.Shuffle, "Shuffle playlist")
+                }
                 Spacer(Modifier.weight(1f)); TextButton(onClick = onSearch) { Text("Find songs") }
             }
             Text("Hold and drag a handle to reorder. Song menus also offer move up/down.", Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

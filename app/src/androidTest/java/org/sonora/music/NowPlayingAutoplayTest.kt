@@ -55,7 +55,7 @@ class NowPlayingAutoplayTest {
                             FullPlayer(
                                 player = PlayerSnapshot(queue = listOf(track), index = 0, positionMs = 62_000, durationMs = 244_000),
                                 error = null, favorite = false, onClose = {}, onFavorite = {}, onToggle = {},
-                                onNext = {}, onPrevious = {}, onSeek = {}, onSpeed = {}, onQueue = {}, onRetry = {},
+                                onNext = {}, onPrevious = {}, onSeek = {}, onRewind = {}, onForward = {}, onSpeed = {}, onQueue = {}, onRetry = {},
                             )
                         }
                     }

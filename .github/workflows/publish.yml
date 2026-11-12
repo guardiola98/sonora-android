@@ -48,6 +48,12 @@ jobs:
           SONORA_GOOGLE_OAUTH_HOST: ${{ vars.SONORA_GOOGLE_OAUTH_HOST }}
           SONORA_GOOGLE_IMPORT_APPROVED: ${{ vars.SONORA_GOOGLE_IMPORT_APPROVED }}
         run: python3 tools/ci-release.py prepare
+      - name: Keep existing in-app update channel current
+        run: python3 tools/ci-release.py channel
+      - name: Publish downloadable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/ci-release.py github
       - name: Publish distribution to GitHub Packages
         env:
           GH_TOKEN: ${{ github.token }}
@@ -57,14 +63,8 @@ jobs:
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           trap 'docker logout ghcr.io' EXIT
           image="ghcr.io/guardiola98/sonora-android:$VERSION"
-          docker build -f tools/release.Dockerfile --build-arg VERSION="$VERSION" --build-arg SOURCE_COMMIT="$SOURCE_COMMIT" -t "$image" dist-release
+          docker build --provenance=false -f tools/release.Dockerfile --build-arg VERSION="$VERSION" --build-arg SOURCE_COMMIT="$SOURCE_COMMIT" -t "$image" dist-release
           docker push "$image"
-      - name: Keep existing in-app update channel current
-        run: python3 tools/ci-release.py channel
-      - name: Publish downloadable GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 tools/ci-release.py github
       - name: Publication summary
         env:
           VERSION: ${{ steps.release.outputs.version }}

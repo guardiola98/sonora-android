@@ -120,34 +120,32 @@ def prepare():
 def publish_branch():
     metadata = verify_bundle(DIST)
     name = metadata['version']
-    remote = git('remote', 'get-url', 'origin')
+    # actions/checkout v6+ scopes credentials to this checkout and its worktrees.
+    # A separate clone would lose that includeIf authentication on future releases.
+    git('fetch', '--no-tags', '--depth=1', 'origin', 'apk-releases')
     with tempfile.TemporaryDirectory(prefix='sonora-channel-') as temp:
-        destination = Path(temp)
-        git('init', '--initial-branch=apk-releases', cwd=destination)
-        git('remote', 'add', 'origin', remote, cwd=destination)
-        # Inherit checkout's scoped credentials without copying or printing secrets.
-        git('config', '--local', 'include.path', str(ROOT / '.git/config'), cwd=destination)
-        git('fetch', '--depth=1', 'origin', 'apk-releases', cwd=destination)
-        git('checkout', '-B', 'apk-releases', 'FETCH_HEAD', cwd=destination)
-        release = destination / 'releases' / name
-        if release.exists():
-            for file in DIST.iterdir():
-                if not (release / file.name).is_file() or (release / file.name).read_bytes() != file.read_bytes():
-                    raise SystemExit('Refusing to replace an existing release')
-            print('Distribution branch already contains these exact files')
-            return
-        latest = json.loads((destination / 'latest.json').read_text())
-        if metadata['versionCode'] <= latest['versionCode']:
-            raise SystemExit('Refusing to downgrade the update channel')
-        shutil.copytree(DIST, release)
-        latest = metadata | {'apk': f'releases/{name}/sonora-{name}.apk'}
-        (destination / 'latest.json').write_text(json.dumps(latest, indent=2) + '\n')
-        (destination / 'README.md').write_text(f'# Sonora signed APKs\n\n[Download {name}](https://github.com/{REPO}/raw/refs/heads/apk-releases/{latest["apk"]})\n\nOfficial APKs use the persistent Sonora signing key. Each release includes matching GPL source, notices and checksums. Install over the previous official version to preserve your library.\n')
-        git('config', 'user.name', 'github-actions[bot]', cwd=destination)
-        git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com', cwd=destination)
-        git('add', '.', cwd=destination)
-        git('commit', '-m', f'Publish signed Sonora {name}', cwd=destination)
-        git('push', 'origin', 'HEAD:refs/heads/apk-releases', cwd=destination)
+        destination = Path(temp) / 'channel'
+        git('worktree', 'add', '--detach', str(destination), 'FETCH_HEAD')
+        try:
+            release = destination / 'releases' / name
+            if release.exists():
+                for file in DIST.iterdir():
+                    if not (release / file.name).is_file() or (release / file.name).read_bytes() != file.read_bytes():
+                        raise SystemExit('Refusing to replace an existing release')
+                print('Distribution branch already contains these exact files')
+                return
+            latest = json.loads((destination / 'latest.json').read_text())
+            if metadata['versionCode'] <= latest['versionCode']:
+                raise SystemExit('Refusing to downgrade the update channel')
+            shutil.copytree(DIST, release)
+            latest = metadata | {'apk': f'releases/{name}/sonora-{name}.apk'}
+            (destination / 'latest.json').write_text(json.dumps(latest, indent=2) + '\n')
+            (destination / 'README.md').write_text(f'# Sonora signed APKs\n\n[Download {name}](https://github.com/{REPO}/raw/refs/heads/apk-releases/{latest["apk"]})\n\nOfficial APKs use the persistent Sonora signing key. Each release includes matching GPL source, notices and checksums. Install over the previous official version to preserve your library.\n')
+            git('add', '.', cwd=destination)
+            git('-c', 'user.name=github-actions[bot]', '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com', 'commit', '-m', f'Publish signed Sonora {name}', cwd=destination)
+            git('push', 'origin', 'HEAD:refs/heads/apk-releases', cwd=destination)
+        finally:
+            git('worktree', 'remove', '--force', str(destination))
 
 
 def api(endpoint, method='GET', data=None, binary=False):

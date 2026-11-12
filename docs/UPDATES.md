@@ -1,6 +1,6 @@
 # In-app updates
 
-Sonora uses the existing `apk-releases/latest.json` on raw.githubusercontent.com. The current distribution already publishes the exact source archive, APK, version code and digest in one branch commit, so GitHub Releases would add a second publication step without changing the trust model. The publisher adds `sizeBytes` and plain-text `notes` from `docs/release-notes/<version>.md`. Older manifests still work.
+Sonora uses the existing `apk-releases/latest.json` on raw.githubusercontent.com. The CI publishes the exact source archive, signed APK, version code and digest to the distribution branch, GitHub Releases and GitHub Packages. The app keeps using the same branch manifest for compatibility. The publisher adds `sizeBytes` and plain-text `notes` from `docs/release-notes/<version>.md`. Older manifests still work.
 
 On a release build WorkManager checks roughly daily when connected and the battery is not low. About → Updates shows the most recent successful result. A manual check is available in both debug and release builds. Only the manifest is checked automatically. Download starts from the Updates dialog. Leaving the dialog cancels an active transfer. A failed or cancelled download can be restarted. Completed APKs are kept in app-private cache.
 
@@ -8,7 +8,7 @@ Sonora restricts APK downloads to the expected path on its distribution branch a
 
 ## Publish
 
-On the validated source commit, run `python3 tools/build-release.py` with the persistent signing key configured as described in the README. Run `python3 tools/publish-release.py` from that same clean commit with the official SSH remote. The script verifies the provenance, certificate and increasing version code before advancing the distribution branch.
+After a successful main CI run, the publication workflow distributes the app automatically. New versions require the existing signing key configured in Actions secrets. The manual `tools/build-release.py` and `tools/publish-release.py` commands remain available as a fallback. See [publication and one-time setup](RELEASING.md). Both paths verify the certificate and preserve the existing distribution channel.
 
 ## Validate on device
 

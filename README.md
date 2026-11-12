@@ -24,7 +24,7 @@ Android may ask you to allow installation from the app opening the APK. Search f
 
 From Sonora 0.6, **About → Updates** checks the official distribution channel and hands verified updates to Android for confirmation. See [in-app updates](docs/UPDATES.md) for signing, publication and validation.
 
-GitHub Actions also builds a `sonora-0.7.2-beta01-debug` artifact for developers; it uses a development key and is separate from the signed distribution above. If repository signing secrets are configured later, Actions additionally produces a verified signed artifact. The present SSH-only publication uses the persistent key locally; it does not claim CI signing is configured.
+GitHub Actions builds a versioned debug artifact for developers and, after successful main checks, publishes the official distribution to [Releases](https://github.com/guardiola98/sonora-android/releases), [Packages](https://github.com/guardiola98/sonora-android/pkgs/container/sonora-android) and the existing update channel. Existing published versions are reused exactly. New versions need the persistent signing key configured once in Actions secrets; see [automatic publication and setup](docs/RELEASING.md).
 
 ## Features
 

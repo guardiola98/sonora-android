@@ -19,13 +19,32 @@ The build helper verifies the release signature, pinned certificate, application
 
 For release instrumentation, `./gradlew -Psonora.testBuildType=release assembleReleaseAndroidTest` selects the signed release variant. The normal device workflow continues to test debug. See VALIDATION.md for the actual observed release tests.
 
-## Optional Actions signing
+## Automatic GitHub Releases and Packages
 
-The available GitHub connection could push source over SSH but had no repository-secret administration capability. The signed APK is therefore built locally and published over SSH. **Actions signing is prepared, not claimed as configured.** The debug build/test/lint artifact remains automatic.
+`Android beta` compiles, tests and lints every main push. After a successful main push, `Publish official Sonora` publishes the version in `app/build.gradle.kts` to three destinations:
 
-An administrator can later add the existing key as the encrypted repository secrets `SONORA_KEYSTORE_BASE64` (base64 of the PKCS#12 file), `SONORA_STORE_PASSWORD`, `SONORA_KEY_ALIAS` and `SONORA_KEY_PASSWORD`, following [GitHub's secrets documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets). Use the same key whose public fingerprint is pinned, not a newly generated key.
+- **GitHub Releases**: versioned signed APK, exact GPL source archive, notices, metadata and checksums. Beta versions are marked as prereleases.
+- **GitHub Packages**: `ghcr.io/guardiola98/sonora-android:<version>`, an OCI distribution image containing those same files in `/release/`. It is a distribution artifact, not a runnable Android container. GitHub Packages supports Docker/OCI images, not a native APK package type.
+- **`apk-releases`**: the existing append-only distribution branch and `latest.json`, preserving compatibility with in-app updates.
 
-The workflow exposes these secrets only to a signing step for trusted main/tag builds, never pull-request code. It decodes the keystore into the runner's temporary directory, removes it on exit, verifies the resulting APK against the pinned certificate and uploads only APK, source, license and checksums. Without the secrets it skips signing explicitly and builds the development artifact. It never generates an ephemeral key and labels it as an official release.
+Publication is serialized and only runs on trusted main push builds or manual dispatch from main (which runs unit tests and lint itself). Pull requests and forks cannot invoke the publishing job. `GITHUB_TOKEN` has `contents: write` and `packages: write` only in that job; no personal token is needed for publication. Re-running an existing version reuses the exact already-published signed APK and source archive and refuses to overwrite mismatched assets. A new version must increase both the name and code and have `docs/release-notes/<version>.md`.
+
+The initial run can mirror the already-published 0.7.2 distribution without signing credentials. **Future new builds require the existing persistent signing key in Actions secrets.** To configure those once, install GitHub CLI, authenticate with repository secret administration access, then run locally:
+
+```bash
+gh auth login
+python3 tools/configure-ci-signing.py
+```
+
+The helper sends the existing `.signing/signing.properties` values and PKCS#12 file to the encrypted repository secrets `SONORA_KEYSTORE_BASE64`, `SONORA_STORE_PASSWORD`, `SONORA_KEY_ALIAS` and `SONORA_KEY_PASSWORD`, using stdin rather than command arguments. It never prints or commits their values. Missing secrets fail a new publication explicitly; no unsigned or newly keyed substitute is published. The current Codex GitHub connector cannot administer Actions secrets, and SSH push access alone cannot configure them.
+
+If enabled, the public OAuth configuration belongs in repository **variables** `SONORA_SPOTIFY_CLIENT_ID`, `SONORA_GOOGLE_CLIENT_ID`, `SONORA_GOOGLE_OAUTH_HOST`, and `SONORA_GOOGLE_IMPORT_APPROVED`. These are optional; preserve the values used for a release that enables those import providers. Client secrets never belong in the Android APK.
+
+GitHub initially creates Packages with private visibility. Set the package visibility to public in its GitHub settings if anonymous registry pulls are desired; regular users always have the public APK download in Releases. The package links to this repository through its OCI source label.
+
+The separate `sonora-web` project reads GitHub Releases (including betas) and the existing distribution manifest, refreshing every five minutes. It does not require a web redeployment when a new app version is published.
+
+References: [GitHub Container registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry), [Releases API](https://docs.github.com/en/rest/releases/releases), [Actions secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets).
 
 ## Beta release code retention
 

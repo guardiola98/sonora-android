@@ -1,0 +1,74 @@
+name: Publish official Sonora
+on:
+  workflow_run:
+    workflows: [Android beta]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: official-sonora-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: >-
+      github.repository == 'guardiola98/sonora-android' &&
+      ((github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Validate manually dispatched publications
+        if: github.event_name == 'workflow_dispatch'
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug
+      - name: Prepare verified immutable release
+        id: release
+        env:
+          SONORA_KEYSTORE_BASE64: ${{ secrets.SONORA_KEYSTORE_BASE64 }}
+          SONORA_STORE_PASSWORD: ${{ secrets.SONORA_STORE_PASSWORD }}
+          SONORA_KEY_ALIAS: ${{ secrets.SONORA_KEY_ALIAS }}
+          SONORA_KEY_PASSWORD: ${{ secrets.SONORA_KEY_PASSWORD }}
+          SONORA_SPOTIFY_CLIENT_ID: ${{ vars.SONORA_SPOTIFY_CLIENT_ID }}
+          SONORA_GOOGLE_CLIENT_ID: ${{ vars.SONORA_GOOGLE_CLIENT_ID }}
+          SONORA_GOOGLE_OAUTH_HOST: ${{ vars.SONORA_GOOGLE_OAUTH_HOST }}
+          SONORA_GOOGLE_IMPORT_APPROVED: ${{ vars.SONORA_GOOGLE_IMPORT_APPROVED }}
+        run: python3 tools/ci-release.py prepare
+      - name: Publish distribution to GitHub Packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          SOURCE_COMMIT: ${{ steps.release.outputs.source }}
+        run: |
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io' EXIT
+          image="ghcr.io/guardiola98/sonora-android:$VERSION"
+          docker build -f tools/release.Dockerfile --build-arg VERSION="$VERSION" --build-arg SOURCE_COMMIT="$SOURCE_COMMIT" -t "$image" dist-release
+          docker push "$image"
+      - name: Keep existing in-app update channel current
+        run: python3 tools/ci-release.py channel
+      - name: Publish downloadable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/ci-release.py github
+      - name: Publication summary
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          echo "Published signed Sonora $VERSION to Releases, Packages and the existing app update channel." >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/guardiola98/sonora-android/releases/tag/v$VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "ghcr.io/guardiola98/sonora-android:$VERSION" >> "$GITHUB_STEP_SUMMARY"

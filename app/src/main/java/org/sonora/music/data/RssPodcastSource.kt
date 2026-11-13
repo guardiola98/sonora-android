@@ -1,5 +1,7 @@
 package org.sonora.music.data
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 import okhttp3.OkHttpClient
@@ -14,10 +16,10 @@ class RssPodcastSource(private val http: OkHttpClient) : PodcastSource {
     private val cache = SingleFlightCache<String, PodcastFeed>(8, 5 * 60_000)
     private var searchTime = 0L
     override suspend fun search(query: String): List<PodcastShow> = runInterruptible(Dispatchers.IO) {
-        val term = query.trim().also { require(it.length in 2..200) { "Enter 2–200 characters to search podcasts." } }
+        val term = query.trim().also { require(it.length in 2..200) { tr("Enter 2–200 characters to search podcasts.") } }
         synchronized(this) {
             val now = android.os.SystemClock.elapsedRealtime()
-            require(searchTime == 0L || now - searchTime >= 3_000) { "Please wait a moment before searching again." }
+            require(searchTime == 0L || now - searchTime >= 3_000) { tr("Please wait a moment before searching again.") }
             searchTime = now
         }
         val country = Locale.getDefault().country.takeIf { it.matches(Regex("[A-Z]{2}")) } ?: "US"
@@ -33,16 +35,16 @@ class RssPodcastSource(private val http: OkHttpClient) : PodcastSource {
         }.distinctBy { it.feedUrl }
     }
     override suspend fun feed(url: String, refresh: Boolean): PodcastFeed {
-        val canonical = requireNotNull(PodcastLinks.https(url)) { "Use a public HTTPS RSS feed URL." }
+        val canonical = requireNotNull(PodcastLinks.https(url)) { tr("Use a public HTTPS RSS feed URL.") }
         if (refresh) cache.invalidate(canonical)
         return cache.get(canonical) {
             runInterruptible(Dispatchers.IO) { PodcastFeedParser.parse(download(canonical, PodcastFeedParser.MAX_BYTES), canonical) }
         }
     }
     override suspend fun resolve(reference: String): AudioStream {
-        val (url, _) = requireNotNull(PodcastLinks.parse(reference)) { "Invalid podcast episode." }
+        val (url, _) = requireNotNull(PodcastLinks.parse(reference)) { tr("Invalid podcast episode.") }
         val episode = feed(url).episodes.firstOrNull { it.reference == reference }
-            ?: throw IOException("This episode is no longer in the publisher's RSS feed.")
+            ?: throw IOException(tr("This episode is no longer in the publisher's RSS feed."))
         return AudioStream(episode.audioUrl)
     }
     override suspend fun invalidate(reference: String) { PodcastLinks.parse(reference)?.let { cache.invalidate(it.first) } }
@@ -50,13 +52,13 @@ class RssPodcastSource(private val http: OkHttpClient) : PodcastSource {
         val request = Request.Builder().url(url).header("User-Agent", "Sonora/${org.sonora.music.BuildConfig.VERSION_NAME} (Android; public RSS podcast client)").build()
         return http.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException(when (response.code) {
-                401, 403 -> "This podcast requires access that Sonora cannot provide."
-                404, 410 -> "This podcast feed is no longer available."
-                429 -> "The podcast provider is limiting requests. Try again later."
-                else -> "Podcast provider returned HTTP ${response.code}. Try again later."
+                401, 403 -> tr("This podcast requires access that Sonora cannot provide.")
+                404, 410 -> tr("This podcast feed is no longer available.")
+                429 -> tr("The podcast provider is limiting requests. Try again later.")
+                else -> tr("Podcast provider returned HTTP %1\$s. Try again later.", response.code)
             })
-            val body = response.body ?: throw IOException("Podcast provider returned an empty response.")
-            require(body.contentLength() <= limit) { "Podcast response is too large." }
+            val body = response.body ?: throw IOException(tr("Podcast provider returned an empty response."))
+            require(body.contentLength() <= limit) { tr("Podcast response is too large.") }
             body.byteStream().use { input ->
                 val output = java.io.ByteArrayOutputStream()
                 val buffer = ByteArray(8192)
@@ -64,7 +66,7 @@ class RssPodcastSource(private val http: OkHttpClient) : PodcastSource {
                     if (Thread.currentThread().isInterrupted) throw java.io.InterruptedIOException()
                     val count = input.read(buffer)
                     if (count < 0) break
-                    require(output.size() + count <= limit) { "Podcast response is too large." }
+                    require(output.size() + count <= limit) { tr("Podcast response is too large.") }
                     output.write(buffer, 0, count)
                 }
                 output.toByteArray()

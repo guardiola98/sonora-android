@@ -1,5 +1,7 @@
 package org.sonora.music.discovery
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -76,7 +78,7 @@ class RadioCoordinator(private val source: RecommendationSource, private val que
                 }
                 publish(status.state.value.copy(loading = false, notice = result.notice))
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { if (request == generation) { emptyAttempts++; retryAt = now() + 60000L * emptyAttempts; publish(status.state.value.copy(loading = false, notice = "Radio is unavailable. Your existing queue is unchanged.")) } }
+            catch (_: Exception) { if (request == generation) { emptyAttempts++; retryAt = now() + 60000L * emptyAttempts; publish(status.state.value.copy(loading = false, notice = tr("Radio is unavailable. Your existing queue is unchanged."))) } }
         }
     }
     fun close() { generation++; job?.cancel() }

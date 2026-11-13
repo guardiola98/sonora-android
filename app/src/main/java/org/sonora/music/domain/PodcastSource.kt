@@ -1,5 +1,7 @@
 package org.sonora.music.domain
 
+import org.sonora.music.i18n.tr
+
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.security.MessageDigest
 import java.util.Base64
@@ -28,7 +30,7 @@ object PodcastLinks {
         return url.newBuilder().fragment(null).build().toString()
     }
     fun reference(feed: String, guid: String): String {
-        val canonical = requireNotNull(https(feed)) { "Use a public HTTPS RSS feed URL." }
+        val canonical = requireNotNull(https(feed)) { tr("Use a public HTTPS RSS feed URL.") }
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(canonical.toByteArray(Charsets.UTF_8))
         val hash = MessageDigest.getInstance("SHA-256").digest(guid.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
         return "sonora-podcast://episode/$encoded/$hash"

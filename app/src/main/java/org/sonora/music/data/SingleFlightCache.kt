@@ -1,5 +1,7 @@
 package org.sonora.music.data
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -45,7 +47,7 @@ class SingleFlightCache<K, V : Any>(private val capacity: Int, private val ttlMs
     }
     suspend fun invalidate(key: K) = mutex.withLock {
         cache.remove(key)
-        flights.remove(key)?.cancel(CancellationException("Source invalidated"))
+        flights.remove(key)?.cancel(CancellationException(tr("Source invalidated")))
         Unit
     }
 }

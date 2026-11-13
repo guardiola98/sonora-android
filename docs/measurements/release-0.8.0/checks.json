@@ -1,0 +1,102 @@
+{
+  "version": "0.8.0-beta01",
+  "versionCode": 12,
+  "unit": {
+    "tests": 156,
+    "passed": 154,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2,
+    "liveImportEnabled": true
+  },
+  "liveImport": {
+    "spotifyPublicEntries": 50,
+    "youtubeMusicEntries": 200,
+    "youtubeMusicPages": 2
+  },
+  "translations": {
+    "languages": [
+      "en",
+      "es",
+      "ca"
+    ],
+    "resourcesEach": 680,
+    "explicitTemplates": 728,
+    "legacyApi": 28
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 23
+  },
+  "publishingGuardsPassed": 3,
+  "oauthBrokerPassed": 1,
+  "device": {
+    "api": 35,
+    "abi": "x86_64",
+    "normalPassed": 6,
+    "compactDp": [
+      320,
+      570
+    ],
+    "compactPassed": 2,
+    "productionDownloadBytes": 3918963,
+    "productionDownloadReference": "https://www.youtube.com/watch?v=sMcWOaJFuw0",
+    "offlineAfterProcessRestart": true,
+    "offlineActiveNetwork": false,
+    "offlineSeekMs": 5000,
+    "generatedMusicAndPodcastCacheOnlyPlayback": true,
+    "globalDownloadManagerResume": true,
+    "languageChangesKeepLibraryAndQueue": true,
+    "removeAudioPreservesPlaylist": true
+  },
+  "upgrade": {
+    "fromVersion": "0.7.3-beta01",
+    "fromVersionCode": 11,
+    "installation": "adb install -r; no clear or uninstall",
+    "unchangedLibraryRows": {
+      "tracks": {
+        "rows": 13,
+        "unchanged": true
+      },
+      "playlists": {
+        "rows": 0,
+        "unchanged": true
+      },
+      "playlist_entries": {
+        "rows": 0,
+        "unchanged": true
+      },
+      "playback_checkpoint": {
+        "rows": 1,
+        "unchanged": true
+      },
+      "podcast_feeds": {
+        "rows": 2,
+        "unchanged": true
+      },
+      "podcast_episodes": {
+        "rows": 500,
+        "unchanged": true
+      },
+      "podcast_progress": {
+        "rows": 4,
+        "unchanged": true
+      },
+      "listening_preferences": {
+        "rows": 5,
+        "unchanged": true
+      }
+    }
+  },
+  "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2",
+  "runtimeSha256": {
+    "classes.dex": "199cc1cf6efbf8ae111471d564a0d4af4f171bc0f1eb4b93bf06a1e34a13716a",
+    "classes2.dex": "d790b5d2e8dca7131a973b1781433223ad87f48bc651304cb0f59a9d48910831",
+    "classes3.dex": "e7d09f904262792033a635cb444a0beac639e9c401df45f39639b1c6dd4c45d5",
+    "classes4.dex": "0c4c5e1ba947bf28bf43df5be4ecf521324c7cc1050826f4579724e858137843",
+    "classes5.dex": "a1819501a76032bbc44a74c548e59c5cfaca11b42af44e31a2497829f310682a",
+    "classes6.dex": "fb5cd413b1e7ea2db4c4b859bf65417d3398384781f23617070234960bcbddcf",
+    "AndroidManifest.xml": "df07ebda2589ba17da5e956e035ad32fcaa5b70c54b9da0bf4de5129eb21e110",
+    "resources.arsc": "60164f2622ef7509027fcf3431a1f5a6f1feb52b2abe77e77949699dd0c7b725"
+  }
+}

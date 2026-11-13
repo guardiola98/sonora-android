@@ -1,5 +1,7 @@
 package org.sonora.music.update
 
+import org.sonora.music.i18n.tr
+
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
@@ -112,7 +114,7 @@ class SonoraUpdates(private val context: Context) {
     suspend fun check() = checkLock.withLock {
         val json = request(RELEASE_ROOT + "latest.json", 30) { _, response ->
             val source = response.body!!.source()
-            if (source.request(MAX_MANIFEST_BYTES + 1)) throw IOException("Manifest too large")
+            if (source.request(MAX_MANIFEST_BYTES + 1)) throw IOException(tr("Manifest too large"))
             source.readUtf8()
         }
         val parsed = parse(json)
@@ -123,7 +125,7 @@ class SonoraUpdates(private val context: Context) {
     suspend fun download(release: SonoraRelease, onProgress: (Int?) -> Unit): File = downloadLock.withLock {
         check(officialInstallation)
         request(release.apkUrl, 15 * 60L) { call, response ->
-            if (!directory.isDirectory && !directory.mkdirs()) throw IOException("Cannot create update directory")
+            if (!directory.isDirectory && !directory.mkdirs()) throw IOException(tr("Cannot create update directory"))
             val stale = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)
             directory.listFiles()?.filter { it.name.startsWith("transfer-") && it.lastModified() < stale }
                 ?.forEach { it.deleteRecursively() }
@@ -144,7 +146,7 @@ class SonoraUpdates(private val context: Context) {
                     partial.outputStream().buffered().use { output ->
                         val buffer = ByteArray(64 * 1024)
                         while (true) {
-                            if (call.isCanceled()) throw IOException("Download cancelled")
+                            if (call.isCanceled()) throw IOException(tr("Download cancelled"))
                             val count = input.read(buffer)
                             if (count < 0) break
                             received += count
@@ -160,10 +162,10 @@ class SonoraUpdates(private val context: Context) {
                         }
                     }
                 }
-                if (expected != null && received != expected) throw IOException("Incomplete APK")
+                if (expected != null && received != expected) throw IOException(tr("Incomplete APK"))
                 if (digest.digest().hex() != release.sha256 || !validArchive(partial, release)) throw InvalidUpdateApk()
-                if (call.isCanceled()) throw IOException("Download cancelled")
-                if (!partial.renameTo(apk)) throw IOException("Cannot save verified APK")
+                if (call.isCanceled()) throw IOException(tr("Download cancelled"))
+                if (!partial.renameTo(apk)) throw IOException(tr("Cannot save verified APK"))
                 directory.listFiles()?.filter { it != apk && it.name.endsWith(".apk") && it.lastModified() < stale }
                     ?.forEach { it.delete() }
                 apk
@@ -210,7 +212,7 @@ class SonoraUpdates(private val context: Context) {
                 override fun onResponse(call: Call, response: Response) {
                     val result = runCatching {
                         response.use {
-                            if (!it.isSuccessful || it.body == null) throw IOException("Update server HTTP ${it.code}")
+                            if (!it.isSuccessful || it.body == null) throw IOException(tr("Update server HTTP %1\$s", it.code))
                             read(call, it)
                         }
                     }

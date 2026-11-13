@@ -1,5 +1,7 @@
 package org.sonora.music.ui
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +20,7 @@ class ImportPresenter(private val repository: ImportRepository, private val scop
     private var job: Job? = null
     fun load(loader: suspend () -> ImportPreview) {
         if (mutable.value.busy) return
-        mutable.value = ImportState(busy = true, progress = "Reading your library…")
+        mutable.value = ImportState(busy = true, progress = tr("Reading your library…"))
         job = scope.launch {
             try {
                 val preview = loader()
@@ -27,16 +29,16 @@ class ImportPresenter(private val repository: ImportRepository, private val scop
                 val groups = preview.collections.groupBy { it.key }.values.map { parts ->
                     parts.first().copy(tracks = parts.flatMap { it.tracks }.distinctBy { it.url }, skipped = parts.sumOf { it.skipped }, duplicates = parts.sumOf { it.duplicates })
                 }.filter { it.tracks.isNotEmpty() || preview.allowEmptyCollections }
-                require(groups.isNotEmpty()) { "No supported tracks found." }
-                require(groups.sumOf { it.tracks.size } <= 10_000) { "Import up to 10,000 track entries at a time." }
+                require(groups.isNotEmpty()) { tr("No supported tracks found.") }
+                require(groups.sumOf { it.tracks.size } <= 10_000) { tr("Import up to 10,000 track entries at a time.") }
                 mutable.value = ImportState(preview = preview.copy(collections = groups), choices = groups.associate {
                     it.key to ImportChoice(it.key, playlist = !it.favoritesHint, favorites = it.favoritesHint)
                 })
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { ensureActive(); mutable.value = ImportState(error = e.message ?: "Could not read this export.") }
+            catch (e: Exception) { ensureActive(); mutable.value = ImportState(error = e.message ?: tr("Could not read this export.")) }
         }
     }
-    fun loadPlaylist(url: String) = load { repository.playlist(url) { count -> mutable.update { it.copy(progress = "Reading playlist · $count tracks…") } } }
+    fun loadPlaylist(url: String) = load { repository.playlist(url) { count -> mutable.update { it.copy(progress = tr("Reading playlist · %1\$s tracks…", count)) } } }
     fun choice(key: String, playlist: Boolean, favorites: Boolean) {
         if (!mutable.value.busy) mutable.update { it.copy(choices = it.choices + (key to ImportChoice(key, playlist, favorites))) }
     }
@@ -44,7 +46,7 @@ class ImportPresenter(private val repository: ImportRepository, private val scop
     fun cancel() {
         if (mutable.value.committing) return
         job?.cancel(); job = null
-        mutable.update { it.copy(busy = false, progress = "", error = if (it.preview != null) "Import cancelled. Nothing was saved." else null) }
+        mutable.update { it.copy(busy = false, progress = "", error = if (it.preview != null) tr("Import cancelled. Nothing was saved.") else null) }
     }
     fun reset() { if (!mutable.value.busy) mutable.value = ImportState() }
     fun save() {
@@ -55,18 +57,18 @@ class ImportPresenter(private val repository: ImportRepository, private val scop
             if (choice.playlist || choice.favorites) ImportSelection(collection, choice.playlist, choice.favorites) else null
         }
         if (selected.isEmpty()) return
-        mutable.update { it.copy(busy = true, error = null, progress = "Preparing import…") }
+        mutable.update { it.copy(busy = true, error = null, progress = tr("Preparing import…")) }
         job = scope.launch {
             try {
                 val (ready, unresolved) = repository.prepare(selected, initial.enrich) { done, total ->
-                    mutable.update { it.copy(progress = "Preparing tracks · $done / $total") }
+                    mutable.update { it.copy(progress = tr("Preparing tracks · %1\$s / %2\$s", done, total)) }
                 }
                 ensureActive()
-                mutable.update { it.copy(committing = true, progress = "Saving your library…") }
+                mutable.update { it.copy(committing = true, progress = tr("Saving your library…")) }
                 val summary = repository.save(ready, unresolved)
                 mutable.value = ImportState(summary = summary)
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { ensureActive(); mutable.update { it.copy(busy = false, committing = false, error = "Could not save the import. Your library was not changed. Try again.") } }
+            catch (e: Exception) { ensureActive(); mutable.update { it.copy(busy = false, committing = false, error = tr("Could not save the import. Your library was not changed. Try again.")) } }
         }
     }
 }

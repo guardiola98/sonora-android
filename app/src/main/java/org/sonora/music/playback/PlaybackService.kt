@@ -1,5 +1,7 @@
 package org.sonora.music.playback
 
+import org.sonora.music.i18n.tr
+
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
@@ -64,7 +66,7 @@ class PlaybackService : MediaSessionService() {
             } else spec
         }
         player = ExoPlayer.Builder(this).setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(10_000).setLoadControl(DefaultLoadControl.Builder()
-            .setBufferDurationsMs(15_000, 50_000, 250, 2_000).setBackBuffer(10_000, false).build()).setMediaSourceFactory(DefaultMediaSourceFactory(resolving)).build().apply {
+            .setBufferDurationsMs(15_000, 50_000, 250, 2_000).setBackBuffer(10_000, false).build()).setMediaSourceFactory(DefaultMediaSourceFactory(graph.downloads.playbackFactory(resolving))).build().apply {
             setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)
             setWakeMode(C.WAKE_MODE_NETWORK)
@@ -128,10 +130,11 @@ class PlaybackService : MediaSessionService() {
                     } else {
                         val sourceError = causes.filterIsInstance<MusicSourceException>().firstOrNull()
                         graph.playbackStatus.report(sourceError?.message ?: when {
-                            expired -> "The stream expired or is unavailable. Retry to request a fresh stream."
-                            error.errorCode in 2000..2999 -> "Audio could not be loaded. Check your connection and retry."
-                            PodcastLinks.isEpisode(url.orEmpty()) -> "Podcast audio is unavailable or unsupported. Refresh the feed or try another episode."
-                            else -> "Playback failed. Retry or choose another track."
+                            expired -> tr("The stream expired or is unavailable. Retry to request a fresh stream.")
+                            graph.downloads.hasDownloaded(url.orEmpty()) -> tr("Downloaded audio could not be read. Open Library → Downloads and download it again.")
+                            error.errorCode in 2000..2999 -> tr("Audio could not be loaded. Check your connection, or play a completed item from Library → Downloads.")
+                            PodcastLinks.isEpisode(url.orEmpty()) -> tr("Podcast audio is unavailable or unsupported. Refresh the feed or try another episode.")
+                            else -> tr("Playback failed. Retry or choose another track.")
                         })
                     }
                 }
@@ -215,7 +218,7 @@ class PlaybackService : MediaSessionService() {
         scope.launch {
             val saved = try { graph.queueStore.read() }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { graph.playbackStatus.report("Previous queue could not be restored."); SavedQueue() }
+            catch (_: Exception) { graph.playbackStatus.report(tr("Previous queue could not be restored.")); SavedQueue() }
             if (!changedDuringRestore && player.mediaItemCount == 0 && saved.tracks.isNotEmpty()) {
                 applyingRestore = true
                 player.setMediaItems(saved.tracks.map { it.toMediaItem() }, saved.index, saved.positionMs)
@@ -249,7 +252,7 @@ class PlaybackService : MediaSessionService() {
         scope.launch {
             try { graph.library.recordPlay(track, System.currentTimeMillis()) }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { graph.playbackStatus.report("Playing, but history could not be saved.") }
+            catch (_: Exception) { graph.playbackStatus.report(tr("Playing, but history could not be saved.")) }
         }
     }
     private fun saveEpisodeProgress(completed: Boolean = player.playbackState == Player.STATE_ENDED) {

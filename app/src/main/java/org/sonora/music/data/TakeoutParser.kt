@@ -1,5 +1,7 @@
 package org.sonora.music.data
 
+import org.sonora.music.i18n.tr
+
 import org.sonora.music.domain.*
 import java.io.*
 import java.text.Normalizer
@@ -24,11 +26,11 @@ class TakeoutParser(
             val out = ByteArrayOutputStream()
             val buffer = ByteArray(8192)
             while (true) {
-                if (Thread.currentThread().isInterrupted) throw InterruptedIOException("Import cancelled")
+                if (Thread.currentThread().isInterrupted) throw InterruptedIOException(tr("Import cancelled"))
                 val count = stream.read(buffer)
                 if (count == -1) break
                 consumed += count
-                require(consumed <= maxBytes) { "Export is too large. Export only playlists/music, or select individual CSV files (32 MiB limit)." }
+                require(consumed <= maxBytes) { tr("Export is too large. Export only playlists/music, or select individual CSV files (32 MiB limit).") }
                 out.write(buffer, 0, count)
             }
             return out.toByteArray()
@@ -36,14 +38,14 @@ class TakeoutParser(
         fun add(file: String, data: ByteArray) {
             val group = parseCsv(file, data.toString(Charsets.UTF_8))
             if (group == null) ignored++ else collections += group
-            require(collections.sumOf { it.tracks.size } <= maxTracks) { "Import up to $maxTracks track entries at a time." }
+            require(collections.sumOf { it.tracks.size } <= maxTracks) { tr("Import up to %1\$s track entries at a time.", maxTracks) }
         }
         if (first == 'P'.code && second == 'K'.code) {
             ZipInputStream(buffered).use { zip ->
                 var count = 0
                 var entry = zip.nextEntry
                 while (entry != null) {
-                    require(++count <= maxEntries) { "Archive has too many files. Export only playlists/music." }
+                    require(++count <= maxEntries) { tr("Archive has too many files. Export only playlists/music.") }
                     // Count all decompressed bytes, including ignored entries, to bound ZIP bombs.
                     val data = bytes(zip)
                     val path = entry.name.replace('\\', '/')
@@ -53,10 +55,10 @@ class TakeoutParser(
                 }
             }
         } else {
-            require(name.endsWith(".csv", true)) { "Select a Google Takeout ZIP or a UTF-8 CSV file." }
+            require(name.endsWith(".csv", true)) { tr("Select a Google Takeout ZIP or a UTF-8 CSV file.") }
             add(name, bytes(buffered))
         }
-        require(collections.any { it.tracks.isNotEmpty() }) { "No supported YouTube tracks found. Select playlists or music-library CSV files, not the export's HTML index." }
+        require(collections.any { it.tracks.isNotEmpty() }) { tr("No supported YouTube tracks found. Select playlists or music-library CSV files, not the export's HTML index.") }
         return ImportPreview(collections, ignored)
     }
 
@@ -91,14 +93,14 @@ class TakeoutParser(
             val title = cell("songtitle", "videotitle", "tracktitle", "title", "titulo", "titol", "nombre")
             val artist = cell("artistnames", "artist", "artists", "uploader", "channelname", "artista", "artistas")
             val duration = duration(cell("durationseconds", "duration", "duracion"))
-            val track = Track(url, title.ifBlank { YouTubeLinks.fallbackTitle(url) }, artist.ifBlank { "Unknown artist" }, "", duration)
+            val track = Track(url, title.ifBlank { YouTubeLinks.fallbackTitle(url) }, artist.ifBlank { tr("Unknown artist") }, "", duration)
             if (tracks.putIfAbsent(url, track) != null) duplicates++
-            require(tracks.size <= maxTracks) { "Import up to $maxTracks track entries at a time." }
+            require(tracks.size <= maxTracks) { tr("Import up to %1\$s track entries at a time.", maxTracks) }
         }
         if (header == null && tracks.isEmpty()) return null
         val normalizedName = normalized(name)
         val liked = listOf("likedmusic", "likedvideos", "likedsongs", "likes", "megustan", "megusta", "videosquegustan", "musicaquemegusta", "videosquemegustan").any { normalizedName == it }
-        return ImportCollection(key, name.ifBlank { "Imported playlist" }, tracks.values.toList(), liked, skipped, duplicates)
+        return ImportCollection(key, name.ifBlank { tr("Imported playlist") }, tracks.values.toList(), liked, skipped, duplicates)
     }
     private fun duration(value: String): Long {
         val pieces = value.split(':')
@@ -134,13 +136,13 @@ class TakeoutParser(
                         if (c == '\r' && i + 1 < text.length && text[i + 1] == '\n') i++
                     }
                     afterQuote && c.isWhitespace() -> Unit
-                    afterQuote -> throw IllegalArgumentException("Invalid CSV quoting. Export the original CSV again.")
+                    afterQuote -> throw IllegalArgumentException(tr("Invalid CSV quoting. Export the original CSV again."))
                     else -> field.append(c)
                 }
-                require(field.length <= 16_384 && rows.size <= 25_000 && row.size <= 100) { "CSV exceeds supported row or field limits." }
+                require(field.length <= 16_384 && rows.size <= 25_000 && row.size <= 100) { tr("CSV exceeds supported row or field limits.") }
                 i++
             }
-            require(!quoted) { "Incomplete CSV: a quoted field was not closed." }
+            require(!quoted) { tr("Incomplete CSV: a quoted field was not closed.") }
             if (field.isNotEmpty() || row.isNotEmpty() || afterQuote) { finishField(); rows.add(row) }
             return rows
         }

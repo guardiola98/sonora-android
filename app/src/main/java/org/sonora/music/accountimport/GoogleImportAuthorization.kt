@@ -1,5 +1,7 @@
 package org.sonora.music.accountimport
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -10,7 +12,7 @@ class GoogleImportAuthorization(private val clientId: String, private val redire
     private class Attempt(val proof: PkceRequest, val result: CompletableDeferred<String>)
     private var pending: Attempt? = null
     suspend fun authorize(openBrowser: (String) -> Unit): TemporaryAccess {
-        if (clientId.isBlank() || redirect.isBlank()) throw ImportAccessException("YouTube authorization needs a registered Google OAuth web client, a verified HTTPS callback and the optional token broker. Takeout and public link imports still work.")
+        if (clientId.isBlank() || redirect.isBlank()) throw ImportAccessException(tr("YouTube authorization needs a registered Google OAuth web client, a verified HTTPS callback and the optional token broker. Takeout and public link imports still work."))
         val target = redirect.toHttpUrl()
         require(target.isHttps && target.encodedPath == "/oauth/callback")
         val attempt = Attempt(PkceRequest(), CompletableDeferred()); pending = attempt
@@ -38,11 +40,11 @@ class GoogleImportAuthorization(private val clientId: String, private val redire
         if (url.scheme != expected.scheme || url.host != expected.host || url.port != expected.port || url.encodedPath != expected.encodedPath ||
             url.username.isNotEmpty() || url.password.isNotEmpty() || url.queryParameterValues("state").size != 1 ||
             !attempt.proof.validState(url.queryParameter("state"))) return false
-        if (url.queryParameter("error") != null) attempt.result.completeExceptionally(ImportAccessException("Google authorization was cancelled or denied. No connection was kept."))
+        if (url.queryParameter("error") != null) attempt.result.completeExceptionally(ImportAccessException(tr("Google authorization was cancelled or denied. No connection was kept.")))
         else {
             val code = url.queryParameter("code")
             if (url.queryParameterValues("code").size != 1 || code.isNullOrBlank() || code.length > 4096)
-                attempt.result.completeExceptionally(ImportAccessException("Google returned an invalid authorization response."))
+                attempt.result.completeExceptionally(ImportAccessException(tr("Google returned an invalid authorization response.")))
             else attempt.result.complete(code)
         }
         return true

@@ -1,5 +1,7 @@
 package org.sonora.music.ui
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,7 +67,7 @@ class SearchPresenter(private val source: MusicSource, private val scope: Corout
             if (remember) repository.remember(text)
         } catch (e: CancellationException) { throw e }
         catch (e: Exception) {
-            if (generation == request) mutable.value = mutable.value.copy(loading = false, searched = true, error = e.message ?: "Search failed. Local results remain available.")
+            if (generation == request) mutable.value = mutable.value.copy(loading = false, searched = true, error = e.message ?: tr("Search failed. Local results remain available."))
         }
     }
     private fun publish() {
@@ -77,7 +79,7 @@ class SearchPresenter(private val source: MusicSource, private val scope: Corout
         val state = mutable.value; val cursor = state.next ?: return
         if (state.loading || state.loadingMore || repository == null || raw.size >= 500) return
         val request = generation
-        if (cursor in visited) { mutable.value = state.copy(next = null, notice = "The source repeated a page. Search again to refresh."); return }
+        if (cursor in visited) { mutable.value = state.copy(next = null, notice = tr("The source repeated a page. Search again to refresh.")); return }
         mutable.value = state.copy(loadingMore = true, error = null)
         pageJob = scope.launch {
             try {
@@ -87,7 +89,7 @@ class SearchPresenter(private val source: MusicSource, private val scope: Corout
                 mutable.value = mutable.value.copy(loadingMore = false, next = page.next.takeIf { raw.size < 500 }, notice = page.notice ?: mutable.value.notice)
                 publish()
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { if (generation == request) mutable.value = mutable.value.copy(loadingMore = false, error = e.message ?: "Could not load the next page. Retry.") }
+            catch (e: Exception) { if (generation == request) mutable.value = mutable.value.copy(loadingMore = false, error = e.message ?: tr("Could not load the next page. Retry.")) }
         }
     }
 }

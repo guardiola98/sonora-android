@@ -1,5 +1,7 @@
 package org.sonora.music.accountimport
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.*
 import org.json.JSONObject
@@ -24,8 +26,8 @@ class AccountHttp : AccountJsonClient {
             .add("code", code).add("code_verifier", verifier).add("redirect_uri", redirect).build()
         val json = request(Request.Builder().url("https://accounts.spotify.com/api/token").post(body).build())
         val token = json.optString("access_token").takeIf { it.isNotBlank() && it != "null" }
-            ?: throw ImportAccessException("Spotify did not return an access token. Connect again.")
-        if (!json.optString("token_type").equals("Bearer", true)) throw ImportAccessException("Unsupported authorization response.")
+            ?: throw ImportAccessException(tr("Spotify did not return an access token. Connect again."))
+        if (!json.optString("token_type").equals("Bearer", true)) throw ImportAccessException(tr("Unsupported authorization response."))
         // refresh_token, if returned, is deliberately ignored. No token response is cached or logged.
         return TemporaryAccess(token, json.optLong("expires_in", 3600))
     }
@@ -33,10 +35,10 @@ class AccountHttp : AccountJsonClient {
         val body = FormBody.Builder().add("code", code).add("code_verifier", verifier).build()
         val json = request(Request.Builder().url(endpoint).post(body).header("Cache-Control", "no-store").build())
         val token = json.optString("access_token").takeIf { it.isNotBlank() && it != "null" }
-            ?: throw ImportAccessException("The Google broker did not return an access token.")
+            ?: throw ImportAccessException(tr("The Google broker did not return an access token."))
         if (!json.optString("token_type").equals("Bearer", true) ||
             GoogleImportAuthorization.YOUTUBE_READONLY !in json.optString("scope").split(' '))
-            throw ImportAccessException("YouTube read permission was not granted.")
+            throw ImportAccessException(tr("YouTube read permission was not granted."))
         return TemporaryAccess(token, json.optLong("expires_in", 3500))
     }
     private suspend fun request(request: Request): JSONObject = suspendCancellableCoroutine { continuation ->
@@ -44,17 +46,17 @@ class AccountHttp : AccountJsonClient {
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (continuation.isActive) continuation.resumeWithException(ImportAccessException("Cannot reach the provider. Check your connection and authorize again."))
+                if (continuation.isActive) continuation.resumeWithException(ImportAccessException(tr("Cannot reach the provider. Check your connection and authorize again.")))
             }
             override fun onResponse(call: Call, response: Response) {
                 try {
                     val json = response.use {
                         if (!it.isSuccessful) throw ImportAccessException(when (it.code) {
-                            401 -> "Authorization expired or was withdrawn. Connect again."
-                            403 -> "Access denied. Check the app's test-user allowlist, API activation and quota. Spotify only exposes owned/collaborative playlist contents."
-                            429 -> "The provider's request quota was reached. Wait before trying another import."
-                            404 -> "This playlist is no longer available to this account."
-                            else -> "The provider could not complete the import. Try again later."
+                            401 -> tr("Authorization expired or was withdrawn. Connect again.")
+                            403 -> tr("Access denied. Check the app's test-user allowlist, API activation and quota. Spotify only exposes owned/collaborative playlist contents.")
+                            429 -> tr("The provider's request quota was reached. Wait before trying another import.")
+                            404 -> tr("This playlist is no longer available to this account.")
+                            else -> tr("The provider could not complete the import. Try again later.")
                         })
                         val source = it.body?.source() ?: throw IOException()
                         if (source.request(2_000_001)) throw IOException()
@@ -64,7 +66,7 @@ class AccountHttp : AccountJsonClient {
                     if (continuation.isActive) continuation.resume(json)
                 } catch (e: Exception) {
                     if (continuation.isActive) continuation.resumeWithException(e as? ImportAccessException
-                        ?: ImportAccessException("The provider returned an unreadable response. Nothing was imported."))
+                        ?: ImportAccessException(tr("The provider returned an unreadable response. Nothing was imported.")))
                 }
             }
         })

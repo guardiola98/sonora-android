@@ -1,5 +1,7 @@
 package org.sonora.music.ui
 
+import org.sonora.music.i18n.tr
+
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -44,16 +46,16 @@ internal fun UpdatesDialog(updates: SonoraUpdates, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Updates") },
+        title = { Text(tr("Updates")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Installed version ${BuildConfig.VERSION_NAME}")
+                Text(tr("Installed version %1\$s", BuildConfig.VERSION_NAME))
                 val release = result?.release
                 val apk = downloaded?.takeIf { it.first == release }?.second
-                if (release == null && downloadJob == null && result != null) Text("Sonora is up to date.")
+                if (release == null && downloadJob == null && result != null) Text(tr("Sonora is up to date."))
                 if (release != null) {
-                    Text("Version ${release.version} available", style = MaterialTheme.typography.titleMedium)
-                    Text(release.notes.ifBlank { "Release notes are unavailable." })
+                    Text(tr("Version %1\$s available", release.version), style = MaterialTheme.typography.titleMedium)
+                    Text(release.notes.ifBlank { tr("Release notes are unavailable.") })
                 }
                 when {
                     downloadJob != null -> {
@@ -61,32 +63,32 @@ internal fun UpdatesDialog(updates: SonoraUpdates, onDismiss: () -> Unit) {
                         if (percent == null) LinearProgressIndicator(Modifier.fillMaxWidth())
                         else {
                             LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth())
-                            Text(if (percent == 100) "Verifying APK…" else "Downloading… $percent%")
+                            Text(if (percent == 100) tr("Verifying APK…") else tr("Downloading… %1\$s%%", percent))
                         }
                         TextButton(onClick = {
                             downloadJob?.cancel()
-                            message = "Download cancelled."
-                        }) { Text("Cancel download") }
+                            message = tr("Download cancelled.")
+                        }) { Text(tr("Cancel download")) }
                     }
                     release != null && !updates.officialInstallation ->
-                        Text("In-app installation requires an existing Sonora APK signed with the official release key.")
+                        Text(tr("In-app installation requires an existing Sonora APK signed with the official release key."))
                     release != null && apk != null -> TextButton(onClick = {
                         message = null
                         try {
                             if (!apk.isFile) {
                                 downloaded = null
-                                message = "The downloaded APK is no longer available. Download it again."
+                                message = tr("The downloaded APK is no longer available. Download it again.")
                             } else if (!context.packageManager.canRequestPackageInstalls()) {
                                 context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                     Uri.parse("package:${context.packageName}")))
-                                message = "Allow installs from Sonora in Android settings, then return and tap Install update."
+                                message = tr("Allow installs from Sonora in Android settings, then return and tap Install update.")
                             } else {
                                 context.startActivity(updates.installerIntent(apk))
                             }
                         } catch (_: Exception) {
-                            message = "Android could not open the installer or installation settings."
+                            message = tr("Android could not open the installer or installation settings.")
                         }
-                    }) { Text("Install update") }
+                    }) { Text(tr("Install update")) }
                     release != null -> TextButton(
                         enabled = checkJob == null,
                         onClick = {
@@ -98,18 +100,18 @@ internal fun UpdatesDialog(updates: SonoraUpdates, onDismiss: () -> Unit) {
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (_: InsufficientUpdateStorage) {
-                                    message = "Free up storage and try downloading again."
+                                    message = tr("Free up storage and try downloading again.")
                                 } catch (_: InvalidUpdateApk) {
-                                    message = "The APK could not be verified. Try again later."
+                                    message = tr("The APK could not be verified. Try again later.")
                                 } catch (_: Exception) {
-                                    message = "The download was interrupted. Check your connection and try again."
+                                    message = tr("The download was interrupted. Check your connection and try again.")
                                 } finally {
                                     downloadJob = null
                                 }
                             }
                             downloadJob?.start()
                         },
-                    ) { Text("Download update") }
+                    ) { Text(tr("Download update")) }
                 }
                 message?.let { Text(it) }
                 TextButton(enabled = checkJob == null && downloadJob == null, onClick = {
@@ -120,15 +122,15 @@ internal fun UpdatesDialog(updates: SonoraUpdates, onDismiss: () -> Unit) {
                         } catch (e: CancellationException) {
                             throw e
                         } catch (_: Exception) {
-                            message = "Could not check for updates. Check your connection and try again."
+                            message = tr("Could not check for updates. Check your connection and try again.")
                         } finally {
                             checkJob = null
                         }
                     }
                     checkJob?.start()
-                }) { Text(if (checkJob == null) "Check for updates" else "Checking…") }
+                }) { Text(if (checkJob == null) tr("Check for updates") else tr("Checking…")) }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Done")) } },
     )
 }

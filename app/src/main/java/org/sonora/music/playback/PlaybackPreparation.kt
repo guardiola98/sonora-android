@@ -1,5 +1,7 @@
 package org.sonora.music.playback
 
+import org.sonora.music.i18n.tr
+
 import android.content.SharedPreferences
 import androidx.core.net.toUri
 import androidx.media3.common.C
@@ -16,7 +18,7 @@ import org.sonora.music.domain.isPersistentTrack
 /** One bounded speculative worker. Playback can join extraction or cancel unrelated preparation. */
 @UnstableApi
 class PlaybackPreparation(private val streams: StreamResolver, val prefixes: AudioPrefixCache,
-    private val scope: CoroutineScope, private val preferences: SharedPreferences) {
+    private val scope: CoroutineScope, private val preferences: SharedPreferences, private val isDownloaded: (String) -> Boolean = { false }) {
     private val mutableEnabled = MutableStateFlow(preferences.getBoolean("prepare_audio", true))
     val enabled = mutableEnabled.asStateFlow()
     private val lock = Any()
@@ -51,7 +53,7 @@ class PlaybackPreparation(private val streams: StreamResolver, val prefixes: Aud
         if (!mutableEnabled.value) return@synchronized
         if (owner == "playback" && job?.isActive == true || origin == "browse" && owner == "queue" && job?.isActive == true) return@synchronized
         val now = android.os.SystemClock.elapsedRealtime()
-        val candidates = urls.distinct().filter { it != selected && isPersistentTrack(it) && !prefixes.hasOwner(it) && now - (attempted[it] ?: -60_000) > 15_000 }
+        val candidates = urls.distinct().filter { it != selected && isPersistentTrack(it) && !isDownloaded(it) && !prefixes.hasOwner(it) && now - (attempted[it] ?: -60_000) > 15_000 }
         if (candidates.isEmpty()) return@synchronized
         cancelLocked(); val request = version
         owner = origin; pending = candidates.toSet()
@@ -73,6 +75,7 @@ class PlaybackPreparation(private val streams: StreamResolver, val prefixes: Aud
     }
     /** Shared by the speculative worker and opt-in on-device benchmarks. Never persists audio. */
     suspend fun prepare(reference: String, onResolved: () -> Unit = {}) {
+        if (isDownloaded(reference)) return
         val revision = prefixes.revision()
         val stream = streams.resolve(reference)
         onResolved()
@@ -84,7 +87,7 @@ class PlaybackPreparation(private val streams: StreamResolver, val prefixes: Aud
             try {
                 source.open(DataSpec.Builder().setUri(stream.url.toUri()).setPosition(0).setLength(AudioPrefixCache.PREFIX_BYTES.toLong()).setHttpRequestHeaders(mapOf("Icy-MetaData" to "1")).build())
                 fun header(name: String) = source.responseHeaders.entries.firstOrNull { it.key.equals(name, true) }?.value?.firstOrNull()
-                require(header("icy-metaint") == null) { "Interleaved live radio metadata is not preloaded." }
+                require(header("icy-metaint") == null) { tr("Interleaved live radio metadata is not preloaded.") }
                 val total = if (source.responseCode == 206) header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
                     else if (source.responseCode == 200) header("Content-Length")?.toLongOrNull() else null
                 val bytes = ByteArray(minOf(AudioPrefixCache.PREFIX_BYTES.toLong(), total?.takeIf { it > 0 } ?: Long.MAX_VALUE).toInt())

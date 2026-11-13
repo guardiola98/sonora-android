@@ -28,7 +28,7 @@ No sign-in occurs inside Sonora, and no Google password, cookie or API key is ne
 
 Nothing is written before **Import selected music**. Preview reports duplicates, invalid/unavailable entries and ignored files. Unselect both destinations to skip a list.
 
-Files containing only video IDs can be imported offline: disable **Look up missing titles online**. Songs are saved as `YouTube track <id>` and remain playable if the source is accessible. Optional lookup has a 20-second timeout per request, at most three concurrent requests, and stops further lookups after repeated network/restriction failures. Failed lookups retain the video reference. Reimport with lookup enabled to retry. Audio streaming still requires a connection.
+Files containing only video IDs can be imported offline: disable **Look up missing titles online**. Songs are saved as `YouTube track <id>` and remain playable if the source is accessible. Optional lookup has a 20-second timeout per request, at most three concurrent requests, and stops further lookups after repeated network/restriction failures. Failed lookups retain the video reference. Reimport with lookup enabled to retry. Streaming requires a connection; [completed downloads](DOWNLOADS.md) play offline.
 
 Reimports add missing entries and likes. They never remove existing entries, unset hearts or modify listening history. Existing order stays intact; newly seen tracks are appended. The same track occurs once per playlist and once in Favorites. The transaction rolls back on failure. **Cancel import** is available while reading/preparing; the brief final database transaction cannot be cancelled from the screen. Import is not scheduled as a background job and is not resumed after process death.
 
@@ -51,3 +51,5 @@ abcdefghijk,Example song,Example artist
 - ZIP contents are read in memory; no archive paths are extracted to storage. Oversized/malformed files fail before saving.
 
 For a larger Takeout archive, extract it yourself and select only the relevant CSVs in smaller batches. Some export format variations may require parser updates; report the column headings and a redacted synthetic example, not your private archive.
+
+For public Spotify links, see [public playlist import](PUBLIC-PLAYLISTS.md).

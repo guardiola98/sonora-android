@@ -1,5 +1,7 @@
 package org.sonora.music.data
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 import org.schabi.newpipe.extractor.ServiceList
@@ -28,7 +30,7 @@ class NewPipeMusicSource : MusicSource, LibraryImportSource, MusicCatalogSource 
         return java.util.UUID.randomUUID().toString().also { continuations[it] = Continuation(query, filter, page!!, collection, System.currentTimeMillis() + 600000) }
     }
     @Synchronized private fun continuation(token: String, query: String, collection: Boolean): Continuation =
-        requireNotNull(continuations[token]?.takeIf { it.query == query && it.collection == collection && it.expires > System.currentTimeMillis() }) { "Search page expired. Search again." }
+        requireNotNull(continuations[token]?.takeIf { it.query == query && it.collection == collection && it.expires > System.currentTimeMillis() }) { tr("Search page expired. Search again.") }
     private fun streamTrack(item: StreamInfoItem): Track? {
         if (item.streamType !in setOf(StreamType.VIDEO_STREAM, StreamType.AUDIO_STREAM)) return null
         val url = YouTubeLinks.track(item.url) ?: return null
@@ -44,7 +46,7 @@ class NewPipeMusicSource : MusicSource, LibraryImportSource, MusicCatalogSource 
                 // Only the dedicated music_artists response identifies an artist. A regular
                 // channel (or a stream uploader) is not evidence of musical artist identity.
                 val artist = kind == CatalogKind.ARTISTS && musical
-                CatalogEntry(item.url, item.name, if (artist) "YouTube Music artist" else "YouTube channel",
+                CatalogEntry(item.url, item.name, if (artist) tr("YouTube Music artist") else tr("YouTube channel"),
                     item.thumbnails.maxByOrNull { it.height }?.url.orEmpty(),
                     if (artist) CatalogKind.ARTISTS else CatalogKind.CHANNELS, musical = artist)
             }
@@ -68,7 +70,7 @@ class NewPipeMusicSource : MusicSource, LibraryImportSource, MusicCatalogSource 
         return try { load(desired) } catch (e: CancellationException) { throw e }
         catch (e: Exception) {
             if (kind != CatalogKind.SONGS || cursor != null) throw e
-            load("videos", "Music search is unavailable; showing ranked public video results. Credits may be channel names.")
+            load("videos", tr("Music search is unavailable; showing ranked public video results. Credits may be channel names."))
         }
     }
     override suspend fun suggestions(query: String): List<String> = extract {
@@ -80,7 +82,7 @@ class NewPipeMusicSource : MusicSource, LibraryImportSource, MusicCatalogSource 
         extractor.relatedItems?.items.orEmpty().filterIsInstance<StreamInfoItem>().mapNotNull(::streamTrack).distinctBy { it.url }.take(40)
     }
     override suspend fun collection(url: String, cursor: String?): CatalogPage = extract {
-        val canonical = requireNotNull(YouTubeLinks.playlist(url)) { "Unsupported public playlist URL." }
+        val canonical = requireNotNull(YouTubeLinks.playlist(url)) { tr("Unsupported public playlist URL.") }
         val next = cursor?.let { continuation(it, canonical, true) }
         val items: List<StreamInfoItem>; val page: Page?
         if (next == null) { val info = PlaylistInfo.getInfo(ServiceList.YouTube, canonical); items = info.relatedItems; page = info.nextPage }
@@ -112,13 +114,13 @@ class NewPipeMusicSource : MusicSource, LibraryImportSource, MusicCatalogSource 
 
 
     override suspend fun track(url: String): Track = extract {
-        val canonical = YouTubeLinks.track(url) ?: throw IllegalArgumentException("Invalid YouTube track URL")
+        val canonical = YouTubeLinks.track(url) ?: throw IllegalArgumentException(tr("Invalid YouTube track URL"))
         val info = StreamInfo.getInfo(ServiceList.YouTube, canonical)
         Track(canonical, info.name, info.uploaderName.orEmpty(), info.thumbnails.maxByOrNull { it.height }?.url.orEmpty(), info.duration.coerceAtLeast(0))
     }
 
     override suspend fun playlist(url: String, progress: (Int) -> Unit): ImportCollection = extract {
-        val canonical = YouTubeLinks.playlist(url) ?: throw IllegalArgumentException("A public or unlisted playlist URL is required.")
+        val canonical = YouTubeLinks.playlist(url) ?: throw IllegalArgumentException(tr("A public or unlisted playlist URL is required."))
         val service = ServiceList.YouTube
         val info = PlaylistInfo.getInfo(service, canonical)
         val tracks = linkedMapOf<String, Track>()
@@ -132,7 +134,7 @@ class NewPipeMusicSource : MusicSource, LibraryImportSource, MusicCatalogSource 
                     if (tracks.putIfAbsent(trackUrl, track) != null) duplicates++
                 }
             }
-            require(tracks.size <= 10_000) { "This playlist exceeds 10,000 tracks. Import smaller CSV files." }
+            require(tracks.size <= 10_000) { tr("This playlist exceeds 10,000 tracks. Import smaller CSV files.") }
             progress(tracks.size)
         }
         append(info.relatedItems)
@@ -140,14 +142,14 @@ class NewPipeMusicSource : MusicSource, LibraryImportSource, MusicCatalogSource 
         val visited = mutableSetOf<String>()
         var pages = 0
         while (Page.isValid(next)) {
-            if (Thread.currentThread().isInterrupted) throw CancellationException("Import cancelled")
+            if (Thread.currentThread().isInterrupted) throw CancellationException(tr("Import cancelled"))
             val token = "${next.id}|${next.url}|${next.ids}|${next.body?.contentHashCode()}"
-            check(visited.add(token) && ++pages <= 500) { "The source repeated or exceeded pagination limits. Nothing was imported; try a Takeout export." }
+            check(visited.add(token) && ++pages <= 500) { tr("The source repeated or exceeded pagination limits. Nothing was imported; try a Takeout export.") }
             val page = PlaylistInfo.getMoreItems(service, canonical, next)
             append(page.items)
             next = page.nextPage
         }
-        require(tracks.isNotEmpty()) { "No accessible audio tracks in this playlist. Private lists and Likes can be imported from a Takeout export." }
+        require(tracks.isNotEmpty()) { tr("No accessible audio tracks in this playlist. Private lists and Likes can be imported from a Takeout export.") }
         if (info.streamCount > tracks.size + duplicates + skipped) skipped += (info.streamCount - tracks.size - duplicates - skipped).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         ImportCollection("youtube:${canonical.substringAfter("list=")}", info.name, tracks.values.toList(), skipped = skipped, duplicates = duplicates)
     }

@@ -1,5 +1,7 @@
 package org.sonora.music.ui
 
+import org.sonora.music.i18n.tr
+
 import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -16,7 +18,7 @@ class PodcastPresenter(private val source: PodcastSource, private val dao: Podca
     private val playback: PlaybackConnection, private val scope: CoroutineScope) {
     private val mutable = MutableStateFlow(PodcastState())
     val state = mutable.asStateFlow()
-    val subscriptions = dao.subscriptions().catch { mutable.update { it.copy(searchError = "Could not read podcast subscriptions.") }; emit(emptyList()) }
+    val subscriptions = dao.subscriptions().catch { mutable.update { it.copy(searchError = tr("Could not read podcast subscriptions.")) }; emit(emptyList()) }
         .stateIn(scope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val progress = dao.progress().map { rows -> rows.associateBy { it.reference } }.catch { emit(emptyMap()) }
         .stateIn(scope, SharingStarted.WhileSubscribed(5_000), emptyMap())
@@ -34,9 +36,9 @@ class PodcastPresenter(private val source: PodcastSource, private val dao: Podca
     fun open(feedUrl: String, refresh: Boolean = false) {
         feedJob?.cancel()
         val url = PodcastLinks.https(feedUrl)
-        if (url == null) { mutable.update { it.copy(searchError = "Enter a public HTTPS RSS feed URL.") }; return }
+        if (url == null) { mutable.update { it.copy(searchError = tr("Enter a public HTTPS RSS feed URL.")) }; return }
         val same = mutable.value.show?.feedUrl == url
-        mutable.update { it.copy(show = if (same) it.show else SavedPodcast(url, "Loading podcast…", "", "", ""),
+        mutable.update { it.copy(show = if (same) it.show else SavedPodcast(url, tr("Loading podcast…"), "", "", ""),
             episodes = if (same) it.episodes else emptyList(), loading = true, error = null, saving = false) }
         feedJob = scope.launch {
             try {
@@ -46,7 +48,7 @@ class PodcastPresenter(private val source: PodcastSource, private val dao: Podca
                 val episodes = dao.episodes(url)
                 mutable.update { it.copy(show = saved, episodes = episodes, loading = false) }
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { mutable.update { it.copy(loading = false, error = error(e) + if (it.episodes.isNotEmpty()) " Showing saved episodes." else "") } }
+            catch (e: Exception) { mutable.update { it.copy(loading = false, error = error(e) + if (it.episodes.isNotEmpty()) tr(" Showing saved episodes.") else "") } }
         }
     }
     fun close() { feedJob?.cancel(); mutable.update { it.copy(show = null, episodes = emptyList(), loading = false, error = null) } }
@@ -59,21 +61,21 @@ class PodcastPresenter(private val source: PodcastSource, private val dao: Podca
                 dao.subscribe(show.feedUrl, !show.subscribed)
                 mutable.update { if (it.show?.feedUrl == show.feedUrl) it.copy(show = it.show.copy(subscribed = !show.subscribed), saving = false) else it }
             } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { mutable.update { it.copy(saving = false, error = "Subscription could not be saved. Try again.") } }
+            catch (_: Exception) { mutable.update { it.copy(saving = false, error = tr("Subscription could not be saved. Try again.")) } }
         }
     }
     fun play(episode: SavedEpisode) { mutable.value.show?.let { playback.play(listOf(episode.track(it)), 0) } }
     fun markPlayed(episode: SavedEpisode) {
         val completed = progress.value[episode.reference]?.completed != true
         playback.markPodcastPlayed(episode.reference, episode.durationSeconds * 1000, completed) { success ->
-            if (!success) mutable.update { it.copy(error = "Could not update this episode. Reopen the player and try again.") }
+            if (!success) mutable.update { it.copy(error = tr("Could not update this episode. Reopen the player and try again.")) }
         }
     }
 
     private fun error(e: Exception): String = when (e) {
-        is java.net.UnknownHostException, is java.net.SocketTimeoutException, is javax.net.ssl.SSLException -> "Cannot reach the podcast provider. Check your connection and try again."
-        is org.xmlpull.v1.XmlPullParserException -> "This feed is not valid RSS XML. Check its address."
-        is IllegalArgumentException, is java.io.IOException -> e.message?.take(180) ?: "Podcast could not be loaded. Try again."
-        else -> "Podcast could not be loaded. Check the feed and try again."
+        is java.net.UnknownHostException, is java.net.SocketTimeoutException, is javax.net.ssl.SSLException -> tr("Cannot reach the podcast provider. Check your connection and try again.")
+        is org.xmlpull.v1.XmlPullParserException -> tr("This feed is not valid RSS XML. Check its address.")
+        is IllegalArgumentException, is java.io.IOException -> e.message?.take(180) ?: tr("Podcast could not be loaded. Try again.")
+        else -> tr("Podcast could not be loaded. Check the feed and try again.")
     }
 }

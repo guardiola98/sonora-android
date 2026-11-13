@@ -1,5 +1,7 @@
 package org.sonora.music.accountimport
 
+import org.sonora.music.i18n.tr
+
 import org.sonora.music.discovery.MusicText
 import org.sonora.music.domain.Track
 import org.sonora.music.domain.YouTubeLinks
@@ -32,13 +34,13 @@ object SpotifyMatcher {
                 abs(track.durationSeconds - song.durationSeconds) <= (song.durationSeconds * .015).coerceIn(2.0, 4.0)
         }
         return when (matches.size) {
-            1 -> Result(matches.single(), (listOf(matches.single()) + candidates).distinctBy { it.url }.take(5), "Title, source credit, version and duration agree; check before importing.")
-            0 -> Result(null, candidates, "Pending review: no sufficiently close title, artist and duration match.")
-            else -> Result(null, candidates, "Pending review: several versions fit. Choose the recording yourself.")
+            1 -> Result(matches.single(), (listOf(matches.single()) + candidates).distinctBy { it.url }.take(5), tr("Title, source credit, version and duration agree; check before importing."))
+            0 -> Result(null, candidates, tr("Pending review: no sufficiently close title, artist and duration match."))
+            else -> Result(null, candidates, tr("Pending review: several versions fit. Choose the recording yourself."))
         }
     }
 }
 
 data class ReviewedSong(val source: RemoteSong, val candidates: List<Track> = emptyList(), val chosen: Track? = source.playable,
-    val reason: String = source.unavailable ?: "YouTube video reference")
+    val reason: String = source.unavailable ?: tr("YouTube video reference"))
 data class ReviewedPlaylist(val source: RemotePlaylist, val songs: List<ReviewedSong>)

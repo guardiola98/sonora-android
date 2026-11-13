@@ -1,5 +1,7 @@
 package org.sonora.music.accountimport
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.net.InetAddress
@@ -23,7 +25,7 @@ class SpotifyAuthorization(private val exchange: suspend (String, String, String
     suspend fun authorize(clientId: String, likes: Boolean, openBrowser: (String) -> Unit): TemporaryAccess {
         var issued: TemporaryAccess? = null
         try { return withContext(Dispatchers.IO) {
-        if (!clientId.matches(Regex("[A-Za-z0-9]{20,100}"))) throw ImportAccessException("Spotify is not configured in this build. See the OAuth setup guide; file and link imports still work.")
+        if (!clientId.matches(Regex("[A-Za-z0-9]{20,100}"))) throw ImportAccessException(tr("Spotify is not configured in this build. See the OAuth setup guide; file and link imports still work."))
         val proof = PkceRequest()
         ServerSocket(0, 1, InetAddress.getByName("127.0.0.1")).use { server ->
             server.soTimeout = 250
@@ -55,13 +57,13 @@ class SpotifyAuthorization(private val exchange: suspend (String, String, String
                             url.queryParameterValues("state").size == 1 && proof.validState(url.queryParameter("state"))
                         val denied = valid && url?.queryParameter("error") != null
                         if (valid && !denied && url?.queryParameterValues("code")?.size == 1) accepted = url.queryParameter("code")?.takeIf { value -> value.isNotBlank() }
-                        val text = if (accepted != null) "Authorization received. Return to Sonora using the back button to select your playlists."
-                            else if (denied) "Authorization cancelled. Return to Sonora." else "Invalid authorization response. Return to Sonora and try again."
+                        val text = if (accepted != null) tr("Authorization received. Return to Sonora using the back button to select your playlists.")
+                            else if (denied) tr("Authorization cancelled. Return to Sonora.") else tr("Invalid authorization response. Return to Sonora and try again.")
                         val body = "<!doctype html><html><meta name=viewport content='width=device-width,initial-scale=1'><title>Sonora</title><h1>Sonora</h1><p>$text</p></html>".toByteArray()
                         runCatching { it.getOutputStream().apply {
                             write("HTTP/1.1 ${if (valid) "200 OK" else "400 Bad Request"}\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\nContent-Security-Policy: default-src 'none'\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\nContent-Length: ${body.size}\r\n\r\n".toByteArray()); write(body); flush()
                         } }
-                        if (denied) throw ImportAccessException("Spotify authorization was cancelled. No account was connected.")
+                        if (denied) throw ImportAccessException(tr("Spotify authorization was cancelled. No account was connected."))
                     }
                 }
                 accepted

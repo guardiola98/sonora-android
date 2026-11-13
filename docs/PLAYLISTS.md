@@ -13,3 +13,7 @@ The playback queue is independent of playlist edits: changing a saved playlist d
 ## Shuffle
 
 Use the Shuffle icon beside **Play all** to start a playlist in random order. While listening, **Shuffle up next** in the full player or **Up next** queue shuffles only the pending tracks. It keeps the current track, position, play/pause state and already-played order. The button needs at least two pending tracks. Tap again for another random order; saved playlist order is unchanged. The displayed queue, Next button and restored queue follow the shuffled order.
+
+## Download a playlist
+
+Since 0.8, choose **Download playlist**, confirm the current selection, and manage transfers in **Library → Downloads**. Downloading or removing audio does not change the playlist order or membership. New playlist additions are not automatically downloaded. See [offline listening](DOWNLOADS.md).

@@ -1,5 +1,7 @@
 package org.sonora.music.ui
 
+import org.sonora.music.i18n.tr
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -49,16 +51,16 @@ import java.time.format.DateTimeFormatter
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         if (show == null) {
             item {
-                Text("Stories worth your time.", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                Text("PODCASTS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 12.dp))
-                OutlinedTextField(query, { query = it.take(200) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search podcasts") },
+                Text(tr("Stories worth your time."), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                Text(tr("PODCASTS"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 12.dp))
+                OutlinedTextField(query, { query = it.take(200) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(tr("Search podcasts")) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { keyboard?.hide(); presenter.search(query) }),
-                    trailingIcon = { IconButton(onClick = { keyboard?.hide(); presenter.search(query) }, enabled = query.trim().length >= 2 && !state.searching) { Icon(Icons.Rounded.Search, "Find podcasts") } })
-                TextButton(onClick = { rssDialog = true }) { Icon(Icons.Rounded.RssFeed, null); Spacer(Modifier.width(6.dp)); Text("Add RSS feed") }
-                Text("Search directory: Apple Podcasts. Audio comes from each publisher's public RSS feed.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    trailingIcon = { IconButton(onClick = { keyboard?.hide(); presenter.search(query) }, enabled = query.trim().length >= 2 && !state.searching) { Icon(Icons.Rounded.Search, tr("Find podcasts")) } })
+                TextButton(onClick = { rssDialog = true }) { Icon(Icons.Rounded.RssFeed, null); Spacer(Modifier.width(6.dp)); Text(tr("Add RSS feed")) }
+                Text(tr("Search directory: Apple Podcasts. Audio comes from each publisher's public RSS feed."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            item { Text("Your subscriptions", style = MaterialTheme.typography.titleLarge) }
-            if (subscriptions.isEmpty()) item { EmptyState(Icons.Rounded.Podcasts, "Follow a new voice", "Find a podcast or add an RSS feed, then subscribe to keep it here.") }
+            item { Text(tr("Your subscriptions"), style = MaterialTheme.typography.titleLarge) }
+            if (subscriptions.isEmpty()) item { EmptyState(Icons.Rounded.Podcasts, tr("Follow a new voice"), tr("Find a podcast or add an RSS feed, then subscribe to keep it here.")) }
             else item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(subscriptions, key = { it.feedUrl }) { saved ->
@@ -71,8 +73,8 @@ import java.time.format.DateTimeFormatter
             }
             if (state.searching) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             state.searchError?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-            if (state.searched) item { Text("Search results", style = MaterialTheme.typography.titleLarge) }
-            if (state.searched && !state.searching && state.searchError == null && state.results.isEmpty()) item { Text("No podcasts found. Try another name or add the publisher's RSS feed.") }
+            if (state.searched) item { Text(tr("Search results"), style = MaterialTheme.typography.titleLarge) }
+            if (state.searched && !state.searching && state.searchError == null && state.results.isEmpty()) item { Text(tr("No podcasts found. Try another name or add the publisher's RSS feed.")) }
             items(state.results, key = { it.feedUrl }) { result ->
                 OutlinedCard(onClick = { presenter.open(result.feedUrl) }, modifier = Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -81,16 +83,16 @@ import java.time.format.DateTimeFormatter
                             Text(result.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(result.author, style = MaterialTheme.typography.bodySmall)
                         }
-                        Icon(Icons.Rounded.ChevronRight, "Open ${result.title}")
+                        Icon(Icons.Rounded.ChevronRight, tr("Open %1\$s", result.title))
                     }
                 }
             }
         } else {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = presenter::close) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back to podcasts") }
-                    Text("Podcast", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                    IconButton(onClick = { presenter.open(show.feedUrl, refresh = true) }, enabled = !state.loading) { Icon(Icons.Rounded.Refresh, "Refresh episodes") }
+                    IconButton(onClick = presenter::close) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, tr("Back to podcasts")) }
+                    Text(tr("Podcast"), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    IconButton(onClick = { presenter.open(show.feedUrl, refresh = true) }, enabled = !state.loading) { Icon(Icons.Rounded.Refresh, tr("Refresh episodes")) }
                 }
                 Row(Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     PodcastArtwork(show.artwork, Modifier.size(112.dp))
@@ -102,13 +104,13 @@ import java.time.format.DateTimeFormatter
                 if (show.description.isNotBlank()) ExpandableDescription(show.description)
                 Button(onClick = presenter::subscribe, enabled = !state.loading && !state.saving && (show.subscribed || show.refreshedAt > 0)) {
                     Icon(if (show.subscribed) Icons.Rounded.Check else Icons.Rounded.Add, null)
-                    Text(if (show.subscribed) "Subscribed · Unsubscribe" else "Subscribe")
+                    Text(if (show.subscribed) tr("Subscribed · Unsubscribe") else tr("Subscribe"))
                 }
                 if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Text("${state.episodes.size} episodes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp))
+                Text(tr("%1\$s episodes", state.episodes.size), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp))
             }
-            if (!state.loading && state.error == null && state.episodes.isEmpty()) item { Text("This feed has no supported HTTPS audio episodes.") }
+            if (!state.loading && state.error == null && state.episodes.isEmpty()) item { Text(tr("This feed has no supported HTTPS audio episodes.")) }
             items(state.episodes, key = { it.reference }) { episode ->
                 val saved = progress[episode.reference]
                 val track = episode.track(show)
@@ -118,31 +120,32 @@ import java.time.format.DateTimeFormatter
                             PodcastArtwork(track.artwork, Modifier.size(56.dp))
                             Text(episode.title, Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.titleMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
                         }
-                        Text(listOfNotNull(episode.publishedAt.takeIf { it > 0 }?.let { DateTimeFormatter.ofPattern("d MMM yyyy").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(it)) },
-                            episode.durationSeconds.takeIf { it > 0 }?.let(::formatDuration), if (saved?.completed == true) "Played" else saved?.positionMs?.takeIf { it > 0 }?.let { "At ${formatDuration(it / 1000)}" }).joinToString(" · "), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                        Text(listOfNotNull(episode.publishedAt.takeIf { it > 0 }?.let { DateTimeFormatter.ofPattern("d MMM yyyy", org.sonora.music.i18n.AppLanguage.locale).withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(it)) },
+                            episode.durationSeconds.takeIf { it > 0 }?.let(::formatDuration), if (saved?.completed == true) tr("Played") else saved?.positionMs?.takeIf { it > 0 }?.let { tr("At %1\$s", formatDuration(it / 1000)) }).joinToString(" · "), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
                         if (episode.description.isNotBlank()) ExpandableDescription(episode.description)
                         if (saved != null && saved.durationMs > 0) LinearProgressIndicator(progress = { (saved.positionMs.toFloat() / saved.durationMs).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             FilledTonalButton(onClick = { presenter.play(episode) }, enabled = connected, modifier = Modifier.weight(1f)) {
-                                Icon(Icons.Rounded.PlayArrow, null); Text(if ((saved?.resumeMs ?: 0) > 0) "Resume" else "Play episode")
+                                Icon(Icons.Rounded.PlayArrow, null); Text(if ((saved?.resumeMs ?: 0) > 0) tr("Resume") else tr("Play episode"))
                             }
-                            IconButton(onClick = { vm.enqueue(track) }, enabled = connected) { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, "Queue ${episode.title}") }
-                            IconButton(onClick = { vm.favorite(track) }) { Icon(if (track.url in favorites) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favorite ${episode.title}") }
+                            IconButton(onClick = { vm.enqueue(track) }, enabled = connected) { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, tr("Queue %1\$s", episode.title)) }
+                            IconButton(onClick = { vm.favorite(track) }) { Icon(if (track.url in favorites) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, tr("Favorite %1\$s", episode.title)) }
                         }
-                        TextButton(onClick = { presenter.markPlayed(episode) }) { Text(if (saved?.completed == true) "Mark unplayed" else "Mark played") }
+                        DownloadButton(track)
+                        TextButton(onClick = { presenter.markPlayed(episode) }) { Text(if (saved?.completed == true) tr("Mark unplayed") else tr("Mark played")) }
                     }
                 }
             }
-            if (state.episodes.size >= 500) item { Text("Showing up to 500 playable episodes from this RSS feed.", style = MaterialTheme.typography.bodySmall) }
+            if (state.episodes.size >= 500) item { Text(tr("Showing up to 500 playable episodes from this RSS feed."), style = MaterialTheme.typography.bodySmall) }
         }
     }
-    if (rssDialog) AlertDialog(onDismissRequest = { rssDialog = false }, title = { Text("Add a podcast RSS feed") }, text = {
+    if (rssDialog) AlertDialog(onDismissRequest = { rssDialog = false }, title = { Text(tr("Add a podcast RSS feed")) }, text = {
         Column {
-            Text("Paste the publisher's public HTTPS RSS URL. Private or paid feeds requiring login are not supported.")
+            Text(tr("Paste the publisher's public HTTPS RSS URL. Private or paid feeds requiring login are not supported."))
             OutlinedTextField(rss, { rss = it.take(4096) }, label = { Text("https://…/feed.xml") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), modifier = Modifier.fillMaxWidth())
         }
-    }, confirmButton = { TextButton(onClick = { rssDialog = false; keyboard?.hide(); presenter.open(rss) }, enabled = PodcastLinks.https(rss) != null) { Text("Open feed") } },
-        dismissButton = { TextButton(onClick = { rssDialog = false }) { Text("Cancel") } })
+    }, confirmButton = { TextButton(onClick = { rssDialog = false; keyboard?.hide(); presenter.open(rss) }, enabled = PodcastLinks.https(rss) != null) { Text(tr("Open feed")) } },
+        dismissButton = { TextButton(onClick = { rssDialog = false }) { Text(tr("Cancel")) } })
 }
 @Composable private fun PodcastArtwork(url: String, modifier: Modifier) {
     Box(modifier.clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
@@ -153,5 +156,5 @@ import java.time.format.DateTimeFormatter
 @Composable private fun ExpandableDescription(text: String) {
     var expanded by remember(text) { mutableStateOf(false) }
     Text(text, maxLines = if (expanded) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
-    if (text.length > 140) TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(horizontal = 0.dp)) { Text(if (expanded) "Show less" else "Read more") }
+    if (text.length > 140) TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(horizontal = 0.dp)) { Text(if (expanded) tr("Show less") else tr("Read more")) }
 }

@@ -14,6 +14,9 @@ import org.sonora.music.ui.SonoraTheme
 
 @UnstableApi
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(org.sonora.music.i18n.AppLanguage.wrap(newBase))
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

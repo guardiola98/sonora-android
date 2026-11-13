@@ -1,9 +1,11 @@
 package org.sonora.music.discovery
 
+import org.sonora.music.i18n.tr
+
 import org.sonora.music.domain.Track
 
 /** No extractor, Android player or UI types cross these interfaces. */
-enum class CatalogKind(val label: String) { SONGS("Songs"), ARTISTS("Artists"), ALBUMS("Albums"), PLAYLISTS("Playlists"), CHANNELS("Channels") }
+enum class CatalogKind(private val sourceLabel: String) { SONGS("Songs"), ARTISTS("Artists"), ALBUMS("Albums"), PLAYLISTS("Playlists"), CHANNELS("Channels"); val label: String get() = tr(sourceLabel) }
 data class CatalogEntry(val url: String, val title: String, val credit: String, val artwork: String,
     val kind: CatalogKind, val track: Track? = null, val musical: Boolean = false)
 data class CatalogPage(val entries: List<CatalogEntry>, val next: String? = null, val notice: String? = null)
@@ -29,7 +31,7 @@ interface LocalHistoryProvider {
     suspend fun preferences(): Map<String, ListeningPreference>
 }
 data class RecommendationCandidate(val track: Track, val metadata: MusicMetadata? = null,
-    val related: Double? = null, val relatedArtist: Double? = null, val origin: String = "Local library", val musical: Boolean = false)
+    val related: Double? = null, val relatedArtist: Double? = null, val origin: String = tr("Local library"), val musical: Boolean = false)
 data class ScorePart(val label: String, val value: Double, val weight: Double)
 data class Recommendation(val track: Track, val score: Double, val reasons: List<ScorePart>, val group: String,
     val fingerprint: String, val origin: String) {

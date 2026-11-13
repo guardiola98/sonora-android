@@ -1,4 +1,4 @@
-Current release: [0.7.3 player and queue shuffle validation](RELEASE-073-VALIDATION.md). Earlier reports retain their original version scope.
+Current release: [0.8 offline audio, public playlists and language validation](RELEASE-080-VALIDATION.md). Earlier reports retain their original version scope.
 
 Current import follow-up: [0.7.1 Spotify export validation](SPOTIFY-EXPORT-VALIDATION.md). The evidence below retains its original version scope.
 

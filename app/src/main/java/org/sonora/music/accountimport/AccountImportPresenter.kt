@@ -1,5 +1,7 @@
 package org.sonora.music.accountimport
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.sonora.music.discovery.CatalogKind
@@ -11,7 +13,7 @@ data class AccountImportState(val provider: ImportProvider? = null, val busy: Bo
     val progress: String = "", val lists: List<RemotePlaylist> = emptyList(), val selected: Set<String> = emptySet(),
     val review: List<ReviewedPlaylist> = emptyList(), val error: String? = null, val skipPending: Boolean = false,
     val disconnected: Boolean = true, val transferred: Boolean = false,
-    val fromFile: Boolean = false, val searchOnline: Boolean = true) {
+    val fromFile: Boolean = false, val searchOnline: Boolean = true, val publicLink: Boolean = false) {
     val pending get() = review.sumOf { list -> list.songs.count { it.chosen == null } }
 }
 class AccountImportPresenter(private val scope: CoroutineScope, private val catalog: MusicCatalogSource,
@@ -29,15 +31,18 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
         access?.close(); access = null; fileLists = emptyMap(); mutable.value = AccountImportState()
     }
     /** File metadata stays in memory and cannot trigger a provider connection. */
-    fun loadSpotifyExport(loader: suspend () -> List<ReviewedPlaylist>) {
+    fun loadSpotifyExport(loader: suspend () -> List<ReviewedPlaylist>) = loadSpotifyMetadata(loader, false)
+    fun loadSpotifyPublicPlaylist(loader: suspend () -> ReviewedPlaylist) = loadSpotifyMetadata({ listOf(loader()) }, true)
+    private fun loadSpotifyMetadata(loader: suspend () -> List<ReviewedPlaylist>, publicLink: Boolean) {
         cancel(); val session = generation
-        mutable.value = AccountImportState(provider = ImportProvider.SPOTIFY, fromFile = true, busy = true, progress = "Reading Spotify export on this device…")
+        mutable.value = AccountImportState(provider = ImportProvider.SPOTIFY, fromFile = true, publicLink = publicLink, busy = true,
+            progress = if (publicLink) tr("Reading public Spotify playlist…") else tr("Reading Spotify export on this device…"))
         job = scope.launch {
             try {
                 val lists = SpotifyExportParser.combine(loader())
                 ensureActive()
                 if (session != generation) return@launch
-                if (lists.isEmpty()) throw ImportAccessException("No playlists or saved songs found in this export.")
+                if (lists.isEmpty()) throw ImportAccessException(tr("No playlists or saved songs found in this export."))
                 fileLists = lists.associateBy { it.source.id }
                 mutable.update { it.copy(busy = false, progress = "", lists = lists.map(ReviewedPlaylist::source)) }
             } catch (e: CancellationException) { throw e }
@@ -48,7 +53,7 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
     /** A stale authorization result after cancellation must be destroyed, never adopted. */
     fun connect(provider: ImportProvider, likes: Boolean, authorize: suspend () -> TemporaryAccess) {
         cancel(); val session = generation
-        mutable.value = AccountImportState(provider, busy = true, authorizing = true, progress = "Authorize in the provider's system screen…")
+        mutable.value = AccountImportState(provider, busy = true, authorizing = true, progress = tr("Authorize in the provider's system screen…"))
         job = scope.launch {
             var returned: TemporaryAccess? = null
             try {
@@ -57,20 +62,20 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
                 ensureActive()
                 if (session != generation) return@launch
                 access = credential
-                mutable.update { it.copy(authorizing = false, disconnected = false, progress = "Reading accessible playlists…") }
+                mutable.update { it.copy(authorizing = false, disconnected = false, progress = tr("Reading accessible playlists…")) }
                 val lists = collectAccountPages(2000) { source(provider).playlists(credential, it) }.distinctBy { it.id }
-                val liked = if (likes) listOf(RemotePlaylist("likes", if (provider == ImportProvider.SPOTIFY) "Spotify liked songs" else "YouTube liked videos (not Music-only)", null,
+                val liked = if (likes) listOf(RemotePlaylist("likes", if (provider == ImportProvider.SPOTIFY) tr("Spotify liked songs") else tr("YouTube liked videos (not Music-only)"), null,
                     if (provider == ImportProvider.SPOTIFY) "https://open.spotify.com/collection/tracks" else "https://www.youtube.com/playlist?list=LL", likes = true)) else emptyList()
                 ensureActive()
                 mutable.update { it.copy(busy = false, lists = liked + lists, progress = "") }
-                expiry = scope.launch { delay(10 * 60_000L); fail("Import session timed out. Connect again; nothing was saved.") }
-            } catch (e: TimeoutCancellationException) { if (session == generation) fail("Authorization timed out. Connect again when ready.") }
+                expiry = scope.launch { delay(10 * 60_000L); fail(tr("Import session timed out. Connect again; nothing was saved.")) }
+            } catch (e: TimeoutCancellationException) { if (session == generation) fail(tr("Authorization timed out. Connect again when ready.")) }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) { if (session == generation) fail(safeError(e)) }
             finally { if (session != generation || !currentCoroutineContext().isActive || access !== returned) returned?.close() }
         }
     }
-    private fun safeError(e: Exception) = (e as? ImportAccessException)?.message ?: "Import could not finish. Your connection was discarded; authorize again to retry."
+    private fun safeError(e: Exception) = (e as? ImportAccessException)?.message ?: tr("Import could not finish. Your connection was discarded; authorize again to retry.")
     private fun disconnect() { expiry?.cancel(); expiry = null; access?.close(); access = null; mutable.update { it.copy(disconnected = true, authorizing = false) } }
     private fun fail(message: String) { job?.cancel(); disconnect(); fileLists = emptyMap(); mutable.value = AccountImportState(error = message) }
     fun select(id: String) { if (!state.value.busy) mutable.update { it.copy(selected = if (id in it.selected) it.selected - id else it.selected + id) } }
@@ -83,12 +88,12 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
         val provider = initial.provider ?: return
         val selected = initial.lists.filter { it.id in initial.selected }
         if (initial.busy || selected.isEmpty()) return
-        mutable.update { it.copy(busy = true, error = null, progress = "Reading selected playlists…") }
+        mutable.update { it.copy(busy = true, error = null, progress = tr("Reading selected playlists…")) }
         job = scope.launch {
             try {
                 var count = 0
                 val imported = selected.map { list ->
-                    mutable.update { it.copy(progress = "Reading ${list.name}…") }
+                    mutable.update { it.copy(progress = tr("Reading %1\$s…", list.name)) }
                     if (initial.fromFile) fileLists.getValue(list.id)
                     else {
                         val songs = collectAccountPages(10_000 - count) { source(provider).songs(credential!!, list, it) }
@@ -106,9 +111,9 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
                     else {
                         val song = row.source
                         val match = cache[song.id] ?: if (searched < 200 && emptySearches < 3) {
-                            searched++; mutable.update { it.copy(progress = "Finding playable equivalents · $searched (up to 200 automatic searches)…") }
+                            searched++; mutable.update { it.copy(progress = tr("Finding playable equivalents · %1\$s (up to 200 automatic searches)…", searched)) }
                             search(song).also { cache[song.id] = it; emptySearches = if (it.candidates.isEmpty()) emptySearches + 1 else 0 }; // Cache within this flow only.
-                        } else SpotifyMatcher.Result(null, emptyList(), "Pending review: automatic search paused or limit reached. Search this entry individually.")
+                        } else SpotifyMatcher.Result(null, emptyList(), tr("Pending review: automatic search paused or limit reached. Search this entry individually."))
                         row.copy(candidates = match.candidates, chosen = match.chosen, reason = match.reason)
                     }
                 }) }
@@ -124,13 +129,13 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
             delay(200)
             val tracks = withTimeout(20_000) { catalog.searchPage("${song.artists.joinToString(" ")} ${song.title}", CatalogKind.SONGS).entries.mapNotNull { it.track } }
             SpotifyMatcher.match(song, tracks)
-        } catch (e: TimeoutCancellationException) { SpotifyMatcher.Result(null, emptyList(), "Pending review: search timed out. Try this entry again.") }
+        } catch (e: TimeoutCancellationException) { SpotifyMatcher.Result(null, emptyList(), tr("Pending review: search timed out. Try this entry again.")) }
         catch (e: CancellationException) { throw e }
-        catch (_: Exception) { SpotifyMatcher.Result(null, emptyList(), "Pending review: music search is unavailable. Try this entry again.") }
+        catch (_: Exception) { SpotifyMatcher.Result(null, emptyList(), tr("Pending review: music search is unavailable. Try this entry again.")) }
     }
     fun choose(listId: String, index: Int, track: Track?) {
         if (state.value.busy) return
-        updateRow(listId, index) { row -> if (track == null || track in row.candidates) row.copy(chosen = track, reason = if (track == null) "Pending review" else "Version selected by you") else row }
+        updateRow(listId, index) { row -> if (track == null || track in row.candidates) row.copy(chosen = track, reason = if (track == null) tr("Pending review") else tr("Version selected by you")) else row }
     }
     private fun updateRow(listId: String, index: Int, change: (ReviewedSong) -> ReviewedSong) {
         mutable.update { it.copy(skipPending = false, review = it.review.map { list -> if (list.source.id == listId)
@@ -140,20 +145,20 @@ class AccountImportPresenter(private val scope: CoroutineScope, private val cata
         if (state.value.busy) return
         val session = generation
         val row = state.value.review.find { it.source.id == listId }?.songs?.getOrNull(index) ?: return
-        mutable.update { it.copy(busy = true, error = null, progress = "Looking up this entry…") }
+        mutable.update { it.copy(busy = true, error = null, progress = tr("Looking up this entry…")) }
         job = scope.launch {
             try {
                 if (manualUrl != null) {
-                    val url = YouTubeLinks.track(manualUrl) ?: throw ImportAccessException("Enter a valid YouTube video link.")
+                    val url = YouTubeLinks.track(manualUrl) ?: throw ImportAccessException(tr("Enter a valid YouTube video link."))
                     val track = withTimeout(20_000) { lookup.track(url) }
-                    updateRow(listId, index) { it.copy(candidates = (listOf(track) + it.candidates).distinctBy(Track::url), chosen = null, reason = "Review the linked video, then choose Use this version.") }
+                    updateRow(listId, index) { it.copy(candidates = (listOf(track) + it.candidates).distinctBy(Track::url), chosen = null, reason = tr("Review the linked video, then choose Use this version.")) }
                 } else {
                     val result = search(row.source)
                     updateRow(listId, index) { it.copy(candidates = result.candidates, chosen = result.chosen, reason = result.reason) }
                 }
-            } catch (e: TimeoutCancellationException) { mutable.update { it.copy(error = "Lookup timed out. Try again.") } }
+            } catch (e: TimeoutCancellationException) { mutable.update { it.copy(error = tr("Lookup timed out. Try again.")) } }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { mutable.update { it.copy(error = (e as? ImportAccessException)?.message ?: "Lookup failed. Try another link.") } }
+            catch (e: Exception) { mutable.update { it.copy(error = (e as? ImportAccessException)?.message ?: tr("Lookup failed. Try another link.")) } }
             finally { if (session == generation) mutable.update { it.copy(busy = false, progress = "") } }
         }
     }

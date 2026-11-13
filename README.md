@@ -4,7 +4,7 @@
 
 An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account or API key is required for playback. No ads or analytics. Optional temporary playlist authorization requires distributor OAuth setup.
 
-**Current beta: 0.7.3-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
+**Current beta: 0.8.0-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
 <p>
   <img src="docs/screenshots/discovery-home.png" width="240" alt="Personalized Sonora Home on Android 15" />
@@ -16,11 +16,11 @@ Actual emulator captures from the signed 0.5 beta, using public music searches a
 
 ## Install
 
-Download the [signed Sonora 0.7.3 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.7.3-beta01/sonora-0.7.3-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
+Download the [signed Sonora 0.8.0 beta APK](https://github.com/guardiola98/sonora-android/raw/refs/heads/apk-releases/releases/0.8.0-beta01/sonora-0.8.0-beta01.apk). The [APK distribution branch](https://github.com/guardiola98/sonora-android/tree/apk-releases) includes the exact source snapshot, GPL license, attribution, certificate fingerprint and APK SHA-256 for each version.
 
 This release uses a **persistent signing key**. Future releases using this key can update it without uninstalling or clearing the library. Earlier **debug** builds can have different certificates and cannot necessarily be upgraded in place. Do not uninstall an older build with data you need unless you have a usable backup. A new signing key cannot grant access to another application's private data. See [release signing and upgrade notes](docs/RELEASING.md).
 
-Android may ask you to allow installation from the app opening the APK. Search for a song or use **Library → Import music** for Spotify exports and YouTube Music playlists/likes. Use **Library → Backup and restore** to save a copy outside the app before changing phones or uninstalling.
+Android may ask you to allow installation from the app opening the APK. Search for a song or use **Library → Import music** for public Spotify/YouTube Music playlist links, Spotify exports and Takeout playlists/likes. Use **Library → Backup and restore** to save a copy outside the app before changing phones or uninstalling.
 
 From Sonora 0.6, **About → Updates** checks the official distribution channel and hands verified updates to Android for confirmation. See [in-app updates](docs/UPDATES.md) for signing, publication and validation.
 
@@ -47,7 +47,8 @@ GitHub Actions builds a versioned debug artifact for developers and, after succe
 - Room favorites, listening history and imported playlists; history starts only when the player reports playback.
 - Temporary account playlist import: browser PKCE, multi-selection, conservative Spotify version review and early credential disposal. **Requires OAuth app registration; Google additionally needs the optional HTTPS broker and resolution of its API policy restrictions on permanent copies/background players.** Not enabled in an unconfigured build. [Setup, provider restrictions and privacy](docs/OAUTH-IMPORT.md).
 - Import official Spotify account-data ZIP/JSON playlists and saved songs without OAuth. Choose lists, optionally search YouTube, and explicitly confirm versions; export files do not establish recording duration. [Usage, identity and limits](docs/SPOTIFY-EXPORT.md).
-- Import public/unlisted YouTube Music playlist links, including subsequent pages.
+- Import public Spotify playlist links without an account or developer setup, with explicit review of playable YouTube equivalents and a notice when the public page may be incomplete. Public/unlisted YouTube Music links include subsequent pages. [Public playlist imports](docs/PUBLIC-PLAYLISTS.md).
+- English, Spanish and Catalan interface text, with an in-app language picker and Android 13+ per-app language settings. [Languages](docs/LANGUAGES.md).
 - Import Takeout ZIP/CSV playlists, library songs and exported likes, with a preview and per-list Playlist/Favorites choices. Reimports merge without duplicating entries or removing existing likes.
 - Optional missing-title lookup; file imports also work offline. Database upgrades preserve existing favorites and history.
 - Network/source errors with retry; short-lived stream cache and one automatic fresh extraction on HTTP 403/410.
@@ -118,6 +119,7 @@ Compose screens → MusicViewModel → SearchPresenter → SearchRepository → 
 - `domain/` contains stable track metadata and the `MusicSource` / `LibraryImportSource` / `PodcastSource` interfaces, with no UI/player dependency.
 - `data/` owns the OkHttp transport adapter, external extractor integration, short-lived stream cache and Room database.
 - `discovery/` contains catalog and evidence models, public metadata providers, ranking, radio policy, settings and local-first recommendation orchestration.
+- `offline/` owns persistent audio, download state, the foreground transfer service and cache-only playback.
 - `playback/` owns ExoPlayer, the session/service and controller state. The service is the single playback owner.
 - `ui/` contains Compose screens, the MVVM presentation layer and lifecycle-aware StateFlow collection.
 - A small application graph supplies dependencies; no global Activity or player references are retained by the UI.
@@ -128,13 +130,15 @@ Discovery architecture, ranking, sources, privacy and autoplay policy: [DISCOVER
 
 Podcast formats, privacy, limits and manual checks: [PODCASTS.md](docs/PODCASTS.md).
 
+Offline listening, storage and transfer controls: [DOWNLOADS.md](docs/DOWNLOADS.md).
+
 ## Beta scope
 
 - Search uses public music categories where supported and pages up to 500 displayed results. Artists are locally matched credits; channels remain channels. Live streams are excluded. Playlist imports retain their separate documented bounds.
 - Import is a one-time copy, not account synchronization. Sonora never signs in to Google. Likes/private playlists require exported files; only tracks present in the export can be imported. [Formats and limits](docs/IMPORTING.md).
 - Legacy track credit is the source uploader. Optional accepted MusicBrainz identities are stored separately with provenance; incomplete matches do not create album/genre claims. Public related items and sparse metadata cannot guarantee precise subgenre, language or scene matching.
 - Queue metadata and position are saved locally. Restoration itself remains paused and does not extract a stream. With faster starts enabled, the foreground screen can separately prepare likely tracks without autoplay. While playing, position checkpoints are written every two seconds; an abrupt kill can lose the last uncommitted interval. A cleared queue stays cleared.
-- No offline downloads, persistent audio cache, persistent account sign-in, casting or equalizer. Shuffle/repeat, a sleep timer, resumable background imports and additional interface languages remain future work.
+- Offline music and podcast downloads are available in Library → Downloads; see [downloads and limits](docs/DOWNLOADS.md). Persistent account sign-in, casting, an equalizer, repeat, a sleep timer, resumable background imports and more interface languages remain future work.
 - Source changes, IP throttling, verification requests and unavailable tracks can prevent playback. Sonora surfaces those failures and does not add credentials, proxies, DRM handling or access-restriction overrides.
 - Android force-stop stops playback. Manufacturer battery policies still require testing on physical hardware.
 - History shows the 200 most recently played distinct tracks.

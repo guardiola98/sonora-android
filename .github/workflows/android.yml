@@ -28,6 +28,8 @@ jobs:
         run: python3 -m unittest discover -s tools/tests
       - name: Test optional OAuth broker (no deployment)
         run: node --test oauth-broker/worker.test.mjs
+      - name: Verify language resources
+        run: python3 tools/verify-translations.py
       - name: Compile, test and lint
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug assembleDebugAndroidTest
       - name: Read app version

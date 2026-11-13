@@ -1,5 +1,7 @@
 package org.sonora.music.data
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.*
 import org.sonora.music.domain.*
 import java.util.concurrent.atomic.AtomicInteger
@@ -7,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class ImportRepository(private val source: LibraryImportSource, private val library: LibraryDao) {
     suspend fun playlist(url: String, progress: (Int) -> Unit): ImportPreview {
         val canonical = YouTubeLinks.playlist(url)
-            ?: throw IllegalArgumentException("Paste a public or unlisted YouTube playlist link. For private playlists, Likes or mixes, use a Takeout ZIP/CSV export.")
+            ?: throw IllegalArgumentException(tr("Paste a public or unlisted YouTube playlist link. For private playlists, Likes or mixes, use a Takeout ZIP/CSV export."))
         return ImportPreview(listOf(source.playlist(canonical, progress)))
     }
     suspend fun prepare(selections: List<ImportSelection>, enrich: Boolean, progress: (Int, Int) -> Unit): Pair<List<ImportSelection>, Int> = coroutineScope {

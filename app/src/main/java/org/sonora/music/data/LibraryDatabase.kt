@@ -1,5 +1,7 @@
 package org.sonora.music.data
 
+import org.sonora.music.i18n.tr
+
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 import org.sonora.music.domain.*
@@ -90,7 +92,7 @@ abstract class LibraryDao {
     }
     @Transaction open suspend fun renamePlaylist(id: Long, name: String) { require(playlist(id) != null); renameRow(id, validName(name)) }
     @Transaction open suspend fun addToPlaylist(id: Long, tracks: List<Track>) {
-        val list = requireNotNull(playlist(id)) { "Playlist no longer exists." }
+        val list = requireNotNull(playlist(id)) { tr("Playlist no longer exists.") }
         importCollections(listOf(ImportSelection(ImportCollection(list.sourceKey, list.name, tracks), true, false)), System.currentTimeMillis())
     }
     @Transaction open suspend fun removeFromPlaylist(id: Long, url: String) { removeEntry(id, url); prune() }
@@ -102,7 +104,7 @@ abstract class LibraryDao {
         val reordered = (order.distinct().mapNotNull { byUrl[it] } + current.filter { it.trackUrl !in orderedUrls })
         updateEntries(reordered.mapIndexed { index, entry -> entry.copy(position = index) })
     }
-    private fun validName(name: String): String = name.trim().also { require(it.isNotEmpty() && it.length <= 180) { "Use a playlist name of 1–180 characters." } }
+    private fun validName(name: String): String = name.trim().also { require(it.isNotEmpty() && it.length <= 180) { tr("Use a playlist name of 1–180 characters.") } }
 
     @Query("SELECT * FROM tracks WHERE favorite = 1 OR lastPlayedAt IS NOT NULL OR url IN (SELECT trackUrl FROM playlist_entries)")
     protected abstract suspend fun backupTracks(): List<LibraryTrack>
@@ -176,7 +178,7 @@ abstract class LibraryDao {
                 if (selection.favorites && old?.favorite != true) newFavorites++
                 put(LibraryTrack(track.url,
                     if (YouTubeLinks.needsDetails(track) && old != null) old.title else track.title,
-                    track.artist.takeUnless { it.isBlank() || it == "Unknown artist" } ?: old?.artist ?: track.artist,
+                    track.artist.takeUnless { it.isBlank() || it == tr("Unknown artist") } ?: old?.artist ?: track.artist,
                     track.artwork.ifBlank { old?.artwork.orEmpty() },
                     track.durationSeconds.takeIf { it > 0 } ?: old?.durationSeconds ?: 0,
                     favorite = selection.favorites || old?.favorite == true,

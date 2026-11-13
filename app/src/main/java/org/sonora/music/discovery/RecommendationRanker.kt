@@ -1,5 +1,7 @@
 package org.sonora.music.discovery
 
+import org.sonora.music.i18n.tr
+
 import org.sonora.music.domain.Track
 import kotlin.math.ln
 
@@ -34,29 +36,29 @@ class RecommendationRanker {
                 if (value != null && confidence >= .4) parts += ScorePart(label, value.coerceIn(0.0, 1.0), weight * confidence)
             }
             val meta = candidate.metadata; val artist = meta?.artistId?.takeIf { it.confidence >= .8 }
-            if (seedArtist != null && artist != null) add("Same credited artist", if (seedArtist.value == artist.value) 1.0 else candidate.relatedArtist, 25.0, minOf(seedArtist.confidence, artist.confidence))
-            else add("Related artist · ListenBrainz", candidate.relatedArtist, 25.0, .75)
+            if (seedArtist != null && artist != null) add(tr("Same credited artist"), if (seedArtist.value == artist.value) 1.0 else candidate.relatedArtist, 25.0, minOf(seedArtist.confidence, artist.confidence))
+            else add(tr("Related artist · ListenBrainz"), candidate.relatedArtist, 25.0, .75)
             // Uploader affinity is deliberately weak and never labeled artist identity.
-            if (MusicText.uploader(track.artist).isNotEmpty()) add("Same source credit / channel", if (MusicText.uploader(seed.artist) == MusicText.uploader(track.artist)) .85 else null, 6.0, .55)
+            if (MusicText.uploader(track.artist).isNotEmpty()) add(tr("Same source credit / channel"), if (MusicText.uploader(seed.artist) == MusicText.uploader(track.artist)) .85 else null, 6.0, .55)
             val seedGenres = seedMetadata?.genres.orEmpty().filter { it.confidence >= .6 }
             val genres = meta?.genres.orEmpty().filter { it.confidence >= .6 }
-            if (seedGenres.isNotEmpty() && genres.isNotEmpty()) add("Shared MusicBrainz genre evidence", MusicText.overlap(seedGenres.joinToString { it.value }, genres.joinToString { it.value }), 25.0, .65)
-            add("Related by the source", candidate.related, 22.0, .65)
+            if (seedGenres.isNotEmpty() && genres.isNotEmpty()) add(tr("Shared MusicBrainz genre evidence"), MusicText.overlap(seedGenres.joinToString { it.value }, genres.joinToString { it.value }), 25.0, .65)
+            add(tr("Related by the source"), candidate.related, 22.0, .65)
             if (personalized) {
                 val saved = library[track.url]
                 if (saved != null || pref != null) {
                     val preference = .45 + (if (saved?.favorite == true) .3 else 0.0) + .1 * (pref?.more ?: 0).coerceAtMost(2) + .04 * (pref?.completions ?: 0).coerceAtMost(4) - .035 * (pref?.earlySkips ?: 0).coerceAtMost(4) - .02 * (pref?.removals ?: 0).coerceAtMost(3)
-                    add("Your listening preferences", preference, 18.0)
+                    add(tr("Your listening preferences"), preference, 18.0)
                 }
-                if (saved != null && saved.plays > 0) add("Played before", (ln(1.0 + saved.plays) / 5).coerceAtMost(.9), 7.0)
+                if (saved != null && saved.plays > 0) add(tr("Played before"), (ln(1.0 + saved.plays) / 5).coerceAtMost(.9), 7.0)
             }
-            if (seedMetadata?.albumId != null && meta?.albumId != null) add("Same credited album", if (seedMetadata.albumId.value == meta.albumId.value) 1.0 else null, 5.0)
+            if (seedMetadata?.albumId != null && meta?.albumId != null) add(tr("Same credited album"), if (seedMetadata.albumId.value == meta.albumId.value) 1.0 else null, 5.0)
             val sy = seedMetadata?.year?.value?.toIntOrNull(); val cy = meta?.year?.value?.toIntOrNull()
-            if (sy != null && cy != null) add("Similar release era", 1 - (kotlin.math.abs(sy - cy) / 30.0).coerceAtMost(1.0), 4.0, .8)
-            if (seedMetadata?.language != null && meta?.language != null) add("Same documented language", if (seedMetadata.language.value == meta.language.value) 1.0 else 0.0, 5.0, minOf(seedMetadata.language.confidence, meta.language.confidence))
-            if (seedMetadata?.scene != null && meta?.scene != null) add("Shared documented scene", if (seedMetadata.scene.value == meta.scene.value) 1.0 else 0.0, 5.0, minOf(seedMetadata.scene.confidence, meta.scene.confidence))
-            add("Discovery candidate", if (track.url !in library) .85 else .35, 8.0)
-            add("Music candidate", if (candidate.musical) .9 else MusicText.likelyMusic(track), 8.0)
+            if (sy != null && cy != null) add(tr("Similar release era"), 1 - (kotlin.math.abs(sy - cy) / 30.0).coerceAtMost(1.0), 4.0, .8)
+            if (seedMetadata?.language != null && meta?.language != null) add(tr("Same documented language"), if (seedMetadata.language.value == meta.language.value) 1.0 else 0.0, 5.0, minOf(seedMetadata.language.confidence, meta.language.confidence))
+            if (seedMetadata?.scene != null && meta?.scene != null) add(tr("Shared documented scene"), if (seedMetadata.scene.value == meta.scene.value) 1.0 else 0.0, 5.0, minOf(seedMetadata.scene.confidence, meta.scene.confidence))
+            add(tr("Discovery candidate"), if (track.url !in library) .85 else .35, 8.0)
+            add(tr("Music candidate"), if (candidate.musical) .9 else MusicText.likelyMusic(track), 8.0)
             val score = parts.sumOf { it.value * it.weight } / parts.sumOf { it.weight }.coerceAtLeast(1.0)
             // This is a diversity bucket, not an assertion of artist identity. A partial
             // match must not let one band occupy separate verified and unverified buckets.

@@ -1,5 +1,7 @@
 package org.sonora.music.playback
 
+import org.sonora.music.i18n.tr
+
 import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
@@ -25,8 +27,8 @@ class PlaybackConnection(context: Context, private val scope: CoroutineScope,
     private var released = false
     private var playRequest = 0
     private val mainExecutor = ContextCompat.getMainExecutor(context)
-    private val disconnectedMessage = "Player disconnected. Reopen Sonora to reconnect."
-    private val connectionFailedMessage = "Could not connect to the player. Reopen Sonora to retry."
+    private val disconnectedMessage = tr("Player disconnected. Reopen Sonora to reconnect.")
+    private val connectionFailedMessage = tr("Could not connect to the player. Reopen Sonora to retry.")
     private val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
         .setListener(object : MediaController.Listener {
             override fun onDisconnected(controller: MediaController) {

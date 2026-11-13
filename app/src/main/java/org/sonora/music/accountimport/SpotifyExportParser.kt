@@ -1,5 +1,7 @@
 package org.sonora.music.accountimport
 
+import org.sonora.music.i18n.tr
+
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.*
@@ -22,7 +24,7 @@ class SpotifyExportParser(private val maxBytes: Int = 32 * 1024 * 1024, private 
                 ZipInputStream(stream).use { zip ->
                     var entries = 0; var entry = zip.nextEntry
                     while (entry != null) {
-                        check(++entries <= 500, "Archive has too many files. Select the playlist/library JSON files instead.")
+                        check(++entries <= 500, tr("Archive has too many files. Select the playlist/library JSON files instead."))
                         val path = entry.name.replace('\\', '/')
                         val filename = path.substringAfterLast('/')
                         val accepted = !entry.isDirectory && !path.split('/').any { it == ".." } &&
@@ -33,14 +35,14 @@ class SpotifyExportParser(private val maxBytes: Int = 32 * 1024 * 1024, private 
                     }
                 }
             } else {
-                check(name.endsWith(".json", true), "Choose a Spotify account-data ZIP, Playlist JSON or YourLibrary.json.")
+                check(name.endsWith(".json", true), tr("Choose a Spotify account-data ZIP, Playlist JSON or YourLibrary.json."))
                 parse(readBounded(stream, true))
             }
-            check(lists.isNotEmpty(), "No Spotify playlists or saved tracks found. Choose Playlist*.json or YourLibrary.json from your account-data export.")
+            check(lists.isNotEmpty(), tr("No Spotify playlists or saved tracks found. Choose Playlist*.json or YourLibrary.json from your account-data export."))
             return combine(lists)
         } catch (e: InterruptedIOException) { throw e }
         catch (e: ImportAccessException) { throw e }
-        catch (_: Exception) { throw ImportAccessException("Could not read this Spotify export. Choose the original account-data ZIP or playlist/library JSON files.") }
+        catch (_: Exception) { throw ImportAccessException(tr("Could not read this Spotify export. Choose the original account-data ZIP or playlist/library JSON files.")) }
         finally { lists.clear() }
     }
 
@@ -51,9 +53,9 @@ class SpotifyExportParser(private val maxBytes: Int = 32 * 1024 * 1024, private 
             interrupted()
             val n = stream.read(bytes); if (n < 0) break
             consumed += n
-            check(consumed <= maxBytes, "Export exceeds 32 MiB. Select only Playlist*.json and YourLibrary.json, without history or other account files.")
+            check(consumed <= maxBytes, tr("Export exceeds 32 MiB. Select only Playlist*.json and YourLibrary.json, without history or other account files."))
             if (output != null) {
-                check(output.size() + n <= 8 * 1024 * 1024, "A playlist JSON exceeds 8 MiB. Split the export into smaller playlist files.")
+                check(output.size() + n <= 8 * 1024 * 1024, tr("A playlist JSON exceeds 8 MiB. Split the export into smaller playlist files."))
                 output.write(bytes, 0, n)
             }
         }
@@ -67,18 +69,18 @@ class SpotifyExportParser(private val maxBytes: Int = 32 * 1024 * 1024, private 
         text.forEachIndexed { index, c ->
             if (index % 8192 == 0) interrupted()
             if (quoted) { if (escaped) escaped = false else if (c == '\\') escaped = true else if (c == '"') quoted = false }
-            else when (c) { '"' -> quoted = true; '[', '{' -> { depth++; check(depth <= 32, "The export has excessive JSON nesting.") }; ']', '}' -> depth-- }
+            else when (c) { '"' -> quoted = true; '[', '{' -> { depth++; check(depth <= 32, tr("The export has excessive JSON nesting.")) }; ']', '}' -> depth-- }
         }
         val root = JSONObject(text)
         when {
             root.has("playlists") -> {
                 val playlists = root.getJSONArray("playlists")
-                check(playlists.length() + lists.size <= 2000, "Import up to 2,000 playlists at a time.")
+                check(playlists.length() + lists.size <= 2000, tr("Import up to 2,000 playlists at a time."))
                 for (i in 0 until playlists.length()) {
                     interrupted()
                     val playlist = playlists.getJSONObject(i)
                     val name = field(playlist, "name")
-                    check(name.isNotBlank(), "A playlist has no name. Export it again before importing.")
+                    check(name.isNotBlank(), tr("A playlist has no name. Export it again before importing."))
                     val spotifyId = spotifyId(field(playlist, "uri", "playlistUri"), "playlist")
                     // Export files usually omit playlist IDs. Use an explicit export namespace, never guess an API ID.
                     val id = spotifyId ?: "export:" + digest(Normalizer.normalize(name, Normalizer.Form.NFC))
@@ -89,14 +91,14 @@ class SpotifyExportParser(private val maxBytes: Int = 32 * 1024 * 1024, private 
             }
             root.has("tracks") -> {
                 val songs = rows(root.getJSONArray("tracks"), true)
-                lists += ReviewedPlaylist(RemotePlaylist("likes", "Spotify saved songs", songs.size, "https://open.spotify.com/collection/tracks", likes = true), songs)
+                lists += ReviewedPlaylist(RemotePlaylist("likes", tr("Spotify saved songs"), songs.size, "https://open.spotify.com/collection/tracks", likes = true), songs)
             }
-            else -> throw ImportAccessException("This JSON is not a Spotify playlist or saved-song library. History, profile, albums and podcast exports are not imported here.")
+            else -> throw ImportAccessException(tr("This JSON is not a Spotify playlist or saved-song library. History, profile, albums and podcast exports are not imported here."))
         }
     }
 
     private fun rows(array: JSONArray, library: Boolean): List<ReviewedSong> {
-        check(songCount + array.length() <= maxSongs, "Import up to $maxSongs entries at a time.")
+        check(songCount + array.length() <= maxSongs, tr("Import up to %1\$s entries at a time.", maxSongs))
         songCount += array.length()
         return (0 until array.length()).map { index ->
             interrupted()
@@ -107,32 +109,32 @@ class SpotifyExportParser(private val maxBytes: Int = 32 * 1024 * 1024, private 
             val rawUri = track?.let { field(it, "trackUri", "uri") }.orEmpty()
             val id = spotifyId(rawUri, "track")
             val unavailable = when {
-                track == null -> "Pending review: this export entry is a podcast, local file or unavailable item."
-                rawUri.startsWith("spotify:local:") -> "Pending review: local Spotify files cannot be transferred as audio."
-                title.isBlank() || artist.isBlank() -> "Pending review: this entry lacks a song title or artist."
+                track == null -> tr("Pending review: this export entry is a podcast, local file or unavailable item.")
+                rawUri.startsWith("spotify:local:") -> tr("Pending review: local Spotify files cannot be transferred as audio.")
+                title.isBlank() || artist.isBlank() -> tr("Pending review: this entry lacks a song title or artist.")
                 else -> null
             }
-            val song = RemoteSong(id ?: "export-track:" + digest("$title\u0000$artist"), title.ifBlank { "Unavailable export entry ${index + 1}" },
+            val song = RemoteSong(id ?: "export-track:" + digest("$title\u0000$artist"), title.ifBlank { tr("Unavailable export entry %1\$s", index + 1) },
                 listOfNotNull(artist.takeIf { it.isNotBlank() }), 0,
                 id?.let { "https://open.spotify.com/track/$it" }.orEmpty(), unavailable = unavailable)
             // Spotify's export does not establish full recording duration; msPlayed is never duration.
-            ReviewedSong(song, reason = unavailable ?: "Pending review: exported metadata has no recording duration. Choose a playable version.")
+            ReviewedSong(song, reason = unavailable ?: tr("Pending review: exported metadata has no recording duration. Choose a playable version."))
         }
     }
     private fun field(value: JSONObject, vararg names: String): String = names.firstNotNullOfOrNull {
         (value.opt(it) as? String)?.trim()?.takeIf(String::isNotEmpty)
-    }.orEmpty().also { check(it.length <= 1024, "An export field is too long.") }
+    }.orEmpty().also { check(it.length <= 1024, tr("An export field is too long.")) }
     private fun spotifyId(value: String, kind: String): String? = Regex("(?:spotify:$kind:|https://open\\.spotify\\.com/$kind/)([A-Za-z0-9]{22})").matchEntire(value)?.groupValues?.get(1)
     private fun digest(value: String) = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
-    private fun interrupted() { if (Thread.currentThread().isInterrupted) throw InterruptedIOException("Import cancelled") }
+    private fun interrupted() { if (Thread.currentThread().isInterrupted) throw InterruptedIOException(tr("Import cancelled")) }
     private fun check(condition: Boolean, message: String) { if (!condition) throw ImportAccessException(message) }
 
     companion object {
         fun combine(parts: List<ReviewedPlaylist>): List<ReviewedPlaylist> {
             val groups = parts.groupBy { it.source.id }
-            if (groups.size > 2000 || parts.sumOf { it.songs.size } > 10_000) throw ImportAccessException("Import up to 2,000 playlists and 10,000 entries at a time.")
+            if (groups.size > 2000 || parts.sumOf { it.songs.size } > 10_000) throw ImportAccessException(tr("Import up to 2,000 playlists and 10,000 entries at a time."))
             return groups.values.map { copies ->
-                if (copies.distinct().size != 1) throw ImportAccessException("Two exported playlists have the same identity or name but different contents. Choose one export, or rename duplicate playlists in Spotify before exporting again.")
+                if (copies.distinct().size != 1) throw ImportAccessException(tr("Two exported playlists have the same identity or name but different contents. Choose one export, or rename duplicate playlists in Spotify before exporting again."))
                 copies.first()
             }
         }

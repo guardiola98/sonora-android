@@ -1,5 +1,7 @@
 package org.sonora.music.discovery
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -24,7 +26,7 @@ class PublicJsonClient(private val http: OkHttpClient, private val dao: Discover
         return lock.withLock {
             dao.cache(key)?.takeIf { it.expiresAt > now() }?.let { return@withLock it.payload }
             val wait = (next[provider] ?: 0) - now()
-            if (wait > 1500) throw IOException("$provider is cooling down. Cached/local results remain available.")
+            if (wait > 1500) throw IOException(tr("%1\$s is cooling down. Cached/local results remain available.", provider))
             if (wait > 0) delay(wait)
             next[provider] = now() + 1100
             try {
@@ -37,10 +39,10 @@ class PublicJsonClient(private val http: OkHttpClient, private val dao: Discover
                             val header = response.header("Retry-After")
                             val retry = header?.toLongOrNull() ?: header?.let { runCatching { (java.time.ZonedDateTime.parse(it, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() - now()) / 1000 }.getOrNull() }
                             if (retry != null) next[provider] = now() + retry.coerceIn(1, 86400) * 1000
-                            throw IOException("$provider returned HTTP ${response.code}")
+                            throw IOException(tr("%1\$s returned HTTP %2\$s", provider, response.code))
                         }
-                        val body = response.body ?: throw IOException("Empty metadata response")
-                        require(body.contentLength() <= 524288) { "Metadata response too large" }
+                        val body = response.body ?: throw IOException(tr("Empty metadata response"))
+                        require(body.contentLength() <= 524288) { tr("Metadata response too large") }
                         body.byteStream().use { input -> val output = java.io.ByteArrayOutputStream(); val buffer = ByteArray(8192)
                             while (true) { val count = input.read(buffer); if (count < 0) break; require(output.size() + count <= 524288); output.write(buffer, 0, count) }
                             output.toString("UTF-8") }

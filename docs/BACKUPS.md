@@ -4,7 +4,7 @@ In **Library**, tap **Backup and restore** (the restore-clock icon).
 
 ## Export
 
-Choose **Export library** and select a destination through Android's document picker. Save outside Sonora's private app storage so the file survives uninstalling. A backup contains favorites, titles/artists/artwork references, playlists with order (including empty playlists), listening timestamps/counts, podcast subscriptions and episode progress. It does not contain audio, Google credentials, expiring stream URLs or the playback queue. Discovery search history, learned/hidden preferences and metadata caches also remain device-local; 0.5 retains this same version 2 backup format. The JSON is readable and unencrypted; choose a destination appropriate for your listening history. Sonora uploads nothing itself; selecting a cloud document provider gives that provider the file.
+Choose **Export library** and select a destination through Android's document picker. Save outside Sonora's private app storage so the file survives uninstalling. A backup contains favorites, titles/artists/artwork references, playlists with order (including empty playlists), listening timestamps/counts, podcast subscriptions and episode progress. It does not contain downloaded audio (download it again on the destination device), Google credentials, expiring stream URLs or the playback queue. Discovery search history, learned/hidden preferences and metadata caches also remain device-local; 0.5 retains this same version 2 backup format. The JSON is readable and unencrypted; choose a destination appropriate for your listening history. Sonora uploads nothing itself; selecting a cloud document provider gives that provider the file.
 
 ## Restore
 

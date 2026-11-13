@@ -48,7 +48,7 @@ Record device/model, Android version, commit, APK SHA-256, network type and resu
 - [ ] Start a track, verify it appears in history. A failed load must not create a history entry.
 - [ ] Replay a track; its history entry moves to the top without duplicate rows.
 - [ ] Clear history, confirm favorites remain. Cancel the clear dialog and verify nothing changes.
-- [ ] Open Library offline; saved metadata remains available and starting audio reports a recoverable error.
+- [ ] Open Library offline; saved metadata remains available, completed downloads play and undownloaded audio reports a recoverable error.
 
 Attach only redacted logs when reporting failures. Audible output, physical headset behavior, manufacturer power management and lock-screen usability still need a human with a phone even when automated emulator tests pass.
 
@@ -88,7 +88,7 @@ Attach only redacted logs when reporting failures. Audible output, physical head
 - Queue songs and episodes together; next, previous, remove and clear work. Mark played removes the currently selected episode before updating progress; mark unplayed resets its position.
 - Favorite an episode and add it to a playlist. Export a backup, restore on another installation, check favorites/subscriptions/progress and load a subscribed feed.
 - Unsubscribe and check other library data remains. Try malformed XML, an HTML URL, HTTP-only audio, a removed episode and a feed over 16 MiB; no crashes or false success.
-- Check small/large screens, rotation, TalkBack labels and large font sizes. No audio files are downloaded for offline use.
+- Check small/large screens, rotation, TalkBack labels and large font sizes. Download an episode and verify playback after disabling the network.
 
 
 ## Playback startup (0.4 beta)
@@ -121,3 +121,11 @@ Attach only redacted logs when reporting failures. Audible output, physical head
 - [ ] Opt into metadata enrichment for a well-documented artist, inspect source/confidence/date/license. Ambiguous albums remain absent. Test an obscure artist with no MusicBrainz/ListenBrainz result. Disable enrichment again.
 - [ ] Disconnect while searching/refilling and after successful discovery. Local results/library survive, cached candidates remain useful, the UI reports remote failure, and retry has no busy loop. Reconnect and retry deliberately.
 - [ ] Try a large library, narrow phone, landscape, large font and TalkBack. Horizontal shelves, menus, queue labels and settings stay reachable. Confirm there is no fabricated album/genre/language label.
+
+## Offline downloads and languages (0.8)
+
+- [ ] Download a song, a saved playlist and an RSS episode; observe progress and the notification, pause/resume, retry failure and Wi-Fi-only waiting.
+- [ ] Kill/reopen the process, disable Wi-Fi and mobile data, play completed audio and seek. Verify no source/feed refresh occurs.
+- [ ] Remove audio and confirm playlist membership, favorites and podcast positions remain. Test constrained storage and Android foreground-service timeout recovery.
+- [ ] Import a public Spotify link and a YouTube Music playlist link without account setup; review counts/order, ambiguous matches, cancellation and idempotent reimport. Check a short Spotify share URL and a private/unavailable URL.
+- [ ] Switch English → Spanish → Catalan using the picker, restart, and check the player, queue, downloads, import, settings, narrow layout and large text. Test Android 13+ system language settings and the Android 8–12 local preference.

@@ -1,5 +1,7 @@
 package org.sonora.music.accountimport
 
+import org.sonora.music.i18n.tr
+
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import org.sonora.music.domain.Track
@@ -23,7 +25,7 @@ class TemporaryAccess(token: String, lifetimeSeconds: Long, private val clock: (
     private val deadline = clock() + lifetimeSeconds.coerceIn(1, 3600) * 1000
     @Synchronized fun header(): String {
         if (clock() >= deadline) close()
-        return secret?.let { "Bearer ${String(it)}" } ?: throw ImportAccessException("Authorization expired. Connect again to continue.")
+        return secret?.let { "Bearer ${String(it)}" } ?: throw ImportAccessException(tr("Authorization expired. Connect again to continue."))
     }
     @Synchronized override fun close() {
         val old = secret ?: return
@@ -41,10 +43,10 @@ suspend fun <T> collectAccountPages(limit: Int, page: suspend (String?) -> Accou
         currentCoroutineContext().ensureActive()
         val next = page(cursor)
         result += next.items
-        if (result.size > limit) throw ImportAccessException("This selection exceeds $limit entries. Import smaller lists separately.")
+        if (result.size > limit) throw ImportAccessException(tr("This selection exceeds %1\$s entries. Import smaller lists separately.", limit))
         cursor = next.next
         if (cursor != null && (!seen.add(cursor) || seen.size > 500))
-            throw ImportAccessException("The provider returned repeated or excessive pages. Nothing was imported.")
+            throw ImportAccessException(tr("The provider returned repeated or excessive pages. Nothing was imported."))
     } while (cursor != null)
     return result
 }

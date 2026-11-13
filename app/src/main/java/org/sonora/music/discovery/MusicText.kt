@@ -1,5 +1,8 @@
 package org.sonora.music.discovery
 
+import org.sonora.music.i18n.tr
+import org.sonora.music.i18n.versionLabel
+
 import java.text.Normalizer
 import java.util.Locale
 import org.sonora.music.domain.Track
@@ -49,14 +52,14 @@ class SearchRanker {
             val variants = if (entry.track != null) MusicText.variants(entry.title) else emptySet()
             val reasons = mutableListOf<String>()
             var score = coverage * 55
-            if (title == q) { score += 25; reasons += "Exact title" }
-            else if (title.contains(q)) { score += 12; reasons += "Title match" }
-            if (entry.musical) { score += 18; reasons += "Music catalog" }
+            if (title == q) { score += 25; reasons += tr("Exact title") }
+            else if (title.contains(q)) { score += 12; reasons += tr("Title match") }
+            if (entry.musical) { score += 18; reasons += tr("Music catalog") }
             else entry.track?.let { score += MusicText.likelyMusic(it) * 10 }
-            if (entry.url in local) { score += 8; reasons += "In your library" }
-            if (wantedVersions.isNotEmpty() && variants.containsAll(wantedVersions)) { score += 18; reasons += "Requested version" }
-            else if (variants.isNotEmpty()) { score -= 6; reasons += "${variants.joinToString()} version" }
-            if (coverage > .5) reasons += "Query terms"
+            if (entry.url in local) { score += 8; reasons += tr("In your library") }
+            if (wantedVersions.isNotEmpty() && variants.containsAll(wantedVersions)) { score += 18; reasons += tr("Requested version") }
+            else if (variants.isNotEmpty()) { score -= 6; reasons += variants.joinToString { versionLabel(it) } }
+            if (coverage > .5) reasons += tr("Query terms")
             Ranked(entry, score, reasons, variants)
         }.sortedWith(compareByDescending<Ranked> { it.score }.thenBy { it.entry.url })
         if (allVersions) return ranked

@@ -1,5 +1,7 @@
 package org.sonora.music.data
 
+import org.sonora.music.i18n.tr
+
 import org.sonora.music.domain.*
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
@@ -14,8 +16,8 @@ object PodcastFeedParser {
     private const val ITUNES = "http://www.itunes.com/dtds/podcast-1.0.dtd"
     private data class Node(val name: String, val namespace: String, val text: StringBuilder = StringBuilder())
     fun parse(bytes: ByteArray, feedUrl: String): PodcastFeed {
-        require(bytes.size <= MAX_BYTES) { "Podcast feed exceeds 16 MiB." }
-        val canonical = requireNotNull(PodcastLinks.https(feedUrl)) { "Use a public HTTPS RSS feed URL." }
+        require(bytes.size <= MAX_BYTES) { tr("Podcast feed exceeds 16 MiB.") }
+        val canonical = requireNotNull(PodcastLinks.https(feedUrl)) { tr("Use a public HTTPS RSS feed URL.") }
         val parser = XmlPullParserFactory.newInstance().apply { isNamespaceAware = true }.newPullParser()
         parser.setInput(ByteArrayInputStream(bytes), null)
         val stack = mutableListOf<Node>()
@@ -26,13 +28,13 @@ object PodcastFeedParser {
         while (true) {
             val event = parser.nextToken()
             if (event == XmlPullParser.END_DOCUMENT) break
-            require(event != XmlPullParser.DOCDECL) { "RSS document types are not supported." }
+            require(event != XmlPullParser.DOCDECL) { tr("RSS document types are not supported.") }
             when (event) {
                 XmlPullParser.START_TAG -> {
-                    require(stack.size < 32) { "RSS is nested too deeply." }
+                    require(stack.size < 32) { tr("RSS is nested too deeply.") }
                     val parent = stack.lastOrNull()?.name
                     stack.add(Node(parser.name, parser.namespace.orEmpty()))
-                    if (stack.size == 1) require(parser.name == "rss") { "This is not an RSS 2.0 podcast feed." }
+                    if (stack.size == 1) require(parser.name == "rss") { tr("This is not an RSS 2.0 podcast feed.") }
                     if (parser.name == "channel" && parent == "rss") channelSeen = true
                     if (parser.name == "item" && parent == "channel") episode = mutableMapOf()
                     val target = episode ?: show
@@ -70,12 +72,12 @@ object PodcastFeedParser {
                 }
             }
         }
-        require(channelSeen && !show["title"].isNullOrBlank()) { "RSS feed has no podcast title." }
+        require(channelSeen && !show["title"].isNullOrBlank()) { tr("RSS feed has no podcast title.") }
         val podcast = PodcastShow(canonical, plain(show["title"]).take(2000), plain(show["author"]).take(2000),
             PodcastLinks.https(show["artwork"].orEmpty()).orEmpty(), plain(show["description"]))
         val episodes = records.map { row ->
             PodcastEpisode(PodcastLinks.reference(canonical, row["guid"]?.takeIf { it.isNotBlank() } ?: row.getValue("audio")),
-                plain(row["title"]).ifBlank { "Untitled episode" }.take(2000), plain(row["description"]),
+                plain(row["title"]).ifBlank { tr("Untitled episode") }.take(2000), plain(row["description"]),
                 PodcastLinks.https(row["artwork"].orEmpty()).orEmpty(), duration(row["duration"]),
                 runCatching { ZonedDateTime.parse(row["pubDate"], DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli().coerceAtLeast(0) }.getOrDefault(0), row.getValue("audio"))
         }.distinctBy { it.reference }.sortedByDescending { it.publishedAt }

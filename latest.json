@@ -1,10 +1,10 @@
 {
-  "version": "0.7.3-beta01",
-  "versionCode": 11,
-  "sha256": "43cf845155e9882d498286ecd296015a49435557104dd341bb11fa9d9a55f240",
+  "version": "0.8.0-beta01",
+  "versionCode": 12,
+  "sha256": "2735f80d2c9ed93c7a735fb8d02426cd44af6fe96df8a73bbaae43c57a53cf67",
   "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2",
-  "sourceCommit": "89b917468b38b280e3b9c44bdd11bf301775fda4",
-  "notes": "The full player and Up next queue now include a Shuffle up next button. It randomly reorders pending tracks without restarting or interrupting the current track, changing its position, or changing play/pause state. Previously played tracks and saved playlist order stay unchanged.\n\nThe button works with music and podcast queues and is enabled when at least two items remain after the current item. Tap again to reshuffle; this is an action, not a persistent shuffle mode. The displayed queue, Next button and restored queue all follow the new order. Radio keeps its existing autoplay setting.\n\nUses the existing signing key, preserving playlists, favorites, history, podcast progress and backups when updating.",
-  "sizeBytes": 17567598,
-  "apk": "releases/0.7.3-beta01/sonora-0.7.3-beta01.apk"
+  "sourceCommit": "5bb84afdd3a79c62daf82047d35fb42dcbe6b6eb",
+  "notes": "Sonora 0.8.0-beta01\n\nCatal\u00e0\n- Baixa can\u00e7ons, llistes i episodis per escoltar-los sense connexi\u00f3. Gestiona el progr\u00e9s, les pauses i l\u2019espai des de Biblioteca \u2192 Desc\u00e0rregues. Per defecte, nom\u00e9s s\u2019utilitza Wi-Fi sense l\u00edmit de dades.\n- Importa llistes p\u00fabliques de Spotify i YouTube Music per enlla\u00e7, sense configurar cap compte de desenvolupador. Revisa les versions suggerides abans de desar. Spotify pot mostrar nom\u00e9s part d\u2019una llista; per completar-la, usa l\u2019exportaci\u00f3 ZIP/JSON.\n- Interf\u00edcie en catal\u00e0, castell\u00e0 i angl\u00e9s. Tria l\u2019idioma a Quant a Sonora \u2192 Idioma de l\u2019app.\n- Es conserva el bot\u00f3 aleatori al reproductor i a la cua. L\u2019actualitzaci\u00f3 mant\u00e9 la biblioteca i la clau de signatura habitual.\n\nCastellano\n- Descarga canciones, listas y episodios para escucharlos sin conexi\u00f3n. Gestiona las descargas desde Biblioteca \u2192 Descargas; solo Wi-Fi sin l\u00edmite de datos por defecto.\n- Importa listas p\u00fablicas de Spotify y YouTube Music mediante un enlace y revisa las versiones antes de guardar. La p\u00e1gina p\u00fablica de Spotify puede mostrar solo parte de una lista; usa la exportaci\u00f3n ZIP/JSON para completarla.\n- Interfaz en castellano, catal\u00e1n e ingl\u00e9s, con selector de idioma en Acerca de Sonora.\n- Se mantienen el bot\u00f3n aleatorio del reproductor, la biblioteca y la firma habitual para actualizar sin desinstalar.\n\nEnglish\n- Download music, playlists and podcast episodes for offline listening, with progress, pause/resume, retry and storage controls. Unmetered Wi-Fi only by default.\n- Import public Spotify and YouTube Music playlist links without OAuth setup. Review suggested playable versions; Spotify's public preview may be incomplete, with ZIP/JSON export available for missing entries.\n- English, Spanish and Catalan interface and an in-app language picker. Player/queue shuffle remains available. Same signing key and preserved library for in-place upgrades.",
+  "sizeBytes": 18064218,
+  "apk": "releases/0.8.0-beta01/sonora-0.8.0-beta01.apk"
 }

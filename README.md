@@ -2,7 +2,13 @@
 
 [![Android beta](https://github.com/guardiola98/sonora-android/actions/workflows/android.yml/badge.svg)](https://github.com/guardiola98/sonora-android/actions/workflows/android.yml)
 
-An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the external **NewPipeExtractor** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account or API key is required for playback. No ads or analytics. Playlist imports use public links or local export files; no sign-in setup is needed.
+An independent, open-source music and podcast player for Android 8.0+ (API 26). Sonora searches public YouTube tracks through the **[NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor)** library and plays audio through **Media3 ExoPlayer**. Public RSS podcasts have their own discovery and subscriptions tab. No account or API key is required for playback. No ads or analytics. Playlist imports use public links or local export files; no sign-in setup is needed.
+
+## Built on NewPipeExtractor
+
+**Sonora’s YouTube integration would not be possible without [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) and the work of [Team NewPipe](https://github.com/TeamNewPipe) and its contributors.** Their library provides the YouTube search, playlist, metadata and stream extraction used by Sonora. Thank you to the people who build and maintain it as streaming services change.
+
+Sonora uses the unmodified **[NewPipeExtractor v0.27.1](https://github.com/TeamNewPipe/NewPipeExtractor/tree/v0.27.1)** dependency, licensed under **[GPL-3.0-or-later](https://github.com/TeamNewPipe/NewPipeExtractor/blob/v0.27.1/README.md#license)**. Sonora’s interface, local library, player integration and import flows are developed in this repository. Please visit the upstream project for its source, documentation and ways to contribute. [More open-source acknowledgements](#open-source-acknowledgements) are listed below.
 
 **Current beta: 0.8.2-beta01.** This is a testing build. See [validation evidence and limitations](docs/VALIDATION.md) before interpreting build success as proof of device playback.
 
@@ -149,6 +155,46 @@ See the [backup guide](docs/BACKUPS.md), [playlist guide](docs/PLAYLISTS.md), [r
 
 Use JDK 21, keep extraction behind `MusicSource`, and run the three local checks above. Include a regression test for playback state, persistence or error-handling changes. Do not commit signing files, SDKs, Gradle caches, local paths, credentials or extracted stream URLs. Changes to Room entities require a migration and an exported schema update.
 
+## Open-source acknowledgements
+
+Sonora builds on the work of many maintainers and contributors. These are the main projects used by the app, including libraries brought in by other dependencies. The versions in the [version catalog](gradle/libs.versions.toml) and the resolved Gradle dependency graph identify the artifacts used in a particular build.
+
+| Project | Used for | License / upstream notice |
+|---|---|---|
+| **[NewPipeExtractor — Team NewPipe and contributors](https://github.com/TeamNewPipe/NewPipeExtractor/tree/v0.27.1)** | YouTube search, playlists, metadata and stream extraction | [GPL-3.0-or-later](https://github.com/TeamNewPipe/NewPipeExtractor/blob/v0.27.1/README.md#license) |
+| [AndroidX](https://android.googlesource.com/platform/frameworks/support/) — Compose, Material 3, Room, Lifecycle, Activity, Core and WorkManager | Interface, local database, Android lifecycle and background work | [Apache-2.0](https://android.googlesource.com/platform/frameworks/support/+/androidx-main/LICENSE.txt) |
+| [Media3 / ExoPlayer](https://github.com/androidx/media) | Audio playback, media sessions, notifications and offline playback | [Apache-2.0](https://github.com/androidx/media/blob/1.8.0/LICENSE) |
+| [Material icons](https://github.com/google/material-design-icons) | Interface icons | [Apache-2.0](https://github.com/google/material-design-icons/blob/master/LICENSE) |
+| [Kotlin](https://github.com/JetBrains/kotlin), [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines), [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) and [Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform) support artifacts | Language runtime, asynchronous work and dependency support | Apache-2.0; see the upstream repositories’ license files |
+| [OkHttp](https://github.com/square/okhttp) / [Okio](https://github.com/square/okio) | HTTP requests and I/O | [Apache-2.0](https://github.com/square/okhttp/blob/parent-4.12.0/LICENSE.txt) / [Apache-2.0](https://github.com/square/okio/blob/master/LICENSE.txt) |
+| [Coil](https://github.com/coil-kt/coil) and [Accompanist DrawablePainter](https://github.com/google/accompanist/tree/v0.37.3/drawablepainter) | Artwork loading and drawable rendering in Compose | [Apache-2.0](https://github.com/coil-kt/coil/blob/3.3.0/LICENSE.txt) / [Apache-2.0](https://github.com/google/accompanist/blob/v0.37.3/LICENSE) |
+| [jsoup](https://github.com/jhy/jsoup) | HTML parsing in the extractor | [MIT](https://jsoup.org/license) |
+| [nanojson — Team NewPipe fork, based on Matt Mastracci’s nanojson](https://github.com/TeamNewPipe/nanojson/tree/e9d656ddb49a412a5a0a5d5ef20ca7ef09549996) | JSON parsing in the extractor | [Apache-2.0 in the pinned fork’s source headers](https://github.com/TeamNewPipe/nanojson/blob/e9d656ddb49a412a5a0a5d5ef20ca7ef09549996/src/main/java/com/grack/nanojson/JsonParser.java) |
+| [Rhino / Rhino engine — Mozilla and contributors](https://github.com/mozilla/rhino) | JavaScript execution used by the extractor | [MPL-2.0](https://github.com/mozilla/rhino/blob/Rhino1_8_1_Release/LICENSE.txt) |
+| [Protocol Buffers Java Lite](https://github.com/protocolbuffers/protobuf) | Structured data used by the extractor | [BSD-3-Clause](https://github.com/protocolbuffers/protobuf/blob/v36.2/LICENSE) |
+| [Guava](https://github.com/google/guava), including failureaccess / ListenableFuture support | Collections, utilities and asynchronous interoperability | [Apache-2.0](https://github.com/google/guava/blob/v33.3.1/LICENSE) |
+| [JetBrains annotations](https://github.com/JetBrains/java-annotations) and [JSpecify](https://github.com/jspecify/jspecify) | Nullability and API annotations used by dependencies | [Apache-2.0](https://github.com/JetBrains/java-annotations/blob/master/LICENSE.txt) / [Apache-2.0](https://github.com/jspecify/jspecify/blob/main/LICENSE) |
+| [JSR-305 / JCIP annotations](https://repo.maven.apache.org/maven2/com/google/code/findbugs/jsr305/3.0.2/) | Annotations used by the extractor and its dependencies | Apache-2.0 in the published POM; CC-BY-2.5 notices in the bundled JCIP files; see below |
+| [Android desugar JDK libraries](https://github.com/google/desugar_jdk_libs) | Java / NIO compatibility on older Android versions | [GPL-2.0 with the Classpath Exception](https://github.com/google/desugar_jdk_libs/blob/master/LICENSE) |
+
+The pinned **nanojson fork** declares Apache-2.0 in its source headers. For **JSR-305 3.0.2**, the [published POM](https://repo.maven.apache.org/maven2/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.pom) declares Apache-2.0, while the [source archive](https://repo.maven.apache.org/maven2/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2-sources.jar) includes JCIP annotations with Brian Goetz’s copyright and **CC-BY-2.5** notices. The nanojson and JSR-305 entries above correct the labels in the older [third-party notice overview](NOTICE.md). Preserve the upstream, per-file notices when redistributing.
+
+The build and tests also rely on **[Gradle](https://github.com/gradle/gradle)**, the **[Android Gradle Plugin](https://android.googlesource.com/platform/tools/base/)**, **[KSP](https://github.com/google/ksp)** and **[AndroidX Test](https://github.com/android/android-test)** (Apache-2.0), **[JUnit 4](https://github.com/junit-team/junit4/blob/r4.13.2/LICENSE-junit.txt)** (EPL-1.0) and **[Robolectric](https://github.com/robolectric/robolectric/blob/robolectric-4.16.1/LICENSE)** (MIT). Thank you to their contributors as well.
+
+To inspect the full resolved runtime dependency tree:
+
+```bash
+./gradlew :app:dependencies --configuration releaseRuntimeClasspath
+```
+
+Optional discovery enrichment also credits the **[MusicBrainz](https://musicbrainz.org/)** and **[ListenBrainz](https://listenbrainz.org/)** communities. Their runtime data has separate terms: MusicBrainz [core data is CC0 and supplementary data is CC-BY-NC-SA-3.0](https://musicbrainz.org/doc/About/Data_License). See [provider attribution and data licensing](NOTICE.md#optional-runtime-metadata) for how Sonora uses these services.
+
 ## License
 
-Sonora is licensed under **GPL-3.0-or-later**, compatible with NewPipeExtractor's license. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md). NewPipe's application or extractor source is not copied into this repository. Sonora is not affiliated with YouTube, Google or Team NewPipe. YouTube is a trademark of its respective owner; no YouTube Music branding or artwork is bundled.
+**Sonora’s source code is licensed under GPL-3.0-or-later**: GNU GPL version 3, or, at your option, any later version. It is distributed without warranty. Read the full [LICENSE](LICENSE). NewPipeExtractor is also GPL-3.0-or-later; the other dependencies retain their own copyright notices and license terms listed above.
+
+Each official [release](https://github.com/guardiola98/sonora-android/releases) provides the signed APK, a matching **Sonora source ZIP**, `LICENSE`, `NOTICE.md` and release metadata identifying the exact source commit. Dependency source is maintained in the linked upstream projects and is not vendored into that ZIP. When redistributing Sonora or a modified build, provide the corresponding source as required by the GPL and preserve applicable third-party copyright, license and attribution notices. The README’s credits are an overview, not a replacement for those license texts and source-distribution requirements.
+
+The Sonora launcher artwork is original project artwork. Music, podcasts, artwork and provider metadata retain their respective owners’ rights; the app’s software license does not grant rights to that content. The bundled Spotify attribution logo remains a Spotify brand asset governed by its [branding guidelines](https://developer.spotify.com/documentation/design), outside Sonora’s GPL grant.
+
+Sonora is an independently maintained project, **not affiliated with or endorsed by Team NewPipe, YouTube, Google, Spotify or Apple**. Please report Sonora-specific issues in [this repository](https://github.com/guardiola98/sonora-android/issues).

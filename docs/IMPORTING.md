@@ -5,7 +5,7 @@ Open **Library → Import music** (the import icon in the library header). Impor
 ## Public or unlisted playlist link
 
 1. Copy the playlist's share link from YouTube Music or YouTube.
-2. Paste it under **Import a playlist link**, then choose **Preview playlist**.
+2. Paste it under **YouTube Music**, then choose **Preview playlist**.
 3. Review the title/count and choose **Playlist**, **Favorites**, both, or neither.
 4. Tap **Import selected music**. Open **Library → Playlists** to play it.
 

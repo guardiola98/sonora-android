@@ -11,7 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.sonora.music.accountimport.*
+import org.sonora.music.importing.*
 import org.sonora.music.discovery.*
 import org.sonora.music.domain.*
 
@@ -96,9 +96,9 @@ class PublicSpotifyPlaylistTest {
             override suspend fun track(url: String) = track
             override suspend fun playlist(url: String, progress: (Int) -> Unit) = error("unused")
         }
-        val presenter = AccountImportPresenter(backgroundScope, catalog, lookup, { error("Public import must not authorize") }, { output = it })
+        val presenter = SpotifyImportPresenter(backgroundScope, catalog, lookup, { output = it })
         presenter.loadSpotifyPublicPlaylist { PublicSpotifyPlaylist.parse(html(), id) }; runCurrent()
-        assertTrue(presenter.state.value.publicLink); assertTrue(presenter.state.value.disconnected)
+        assertTrue(presenter.state.value.publicLink); assertTrue(presenter.state.value.active)
         assertEquals(0, searches); assertNull(output)
         presenter.select(id); presenter.readSelected(); advanceTimeBy(1500); runCurrent()
         assertEquals(2, searches); assertEquals(2, presenter.state.value.pending)
@@ -107,7 +107,7 @@ class PublicSpotifyPlaylistTest {
         assertEquals("spotify:$id", output!!.collections.single().key)
         assertEquals(listOf(track), output!!.collections.single().tracks)
         assertEquals(2, output!!.collections.single().skipped)
-        presenter.cancel(); assertEquals(AccountImportState(), presenter.state.value)
+        presenter.cancel(); assertEquals(SpotifyImportState(), presenter.state.value)
         var cancelled = false
         presenter.loadSpotifyPublicPlaylist { try { awaitCancellation() } finally { cancelled = true } }; runCurrent()
         presenter.cancel(); runCurrent(); assertTrue(cancelled); assertTrue(presenter.state.value.lists.isEmpty())

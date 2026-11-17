@@ -1,4 +1,4 @@
-package org.sonora.music.accountimport
+package org.sonora.music.importing
 
 import org.sonora.music.i18n.tr
 

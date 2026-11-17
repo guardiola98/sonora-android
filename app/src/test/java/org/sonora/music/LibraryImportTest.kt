@@ -38,7 +38,7 @@ class LibraryImportTest {
         val again = dao.importCollections(listOf(selection(listOf(a, b, c), true)), 300)
         assertEquals(ImportSummary(), again)
     }
-    @Test fun oauthYoutubeAndLinkImportsShareTheDestinationAndKeepOriginalOrder() = runTest {
+    @Test fun legacyYoutubeAndLinkImportsShareTheDestinationAndKeepOriginalOrder() = runTest {
         val key = "youtube:PLabcdefghijk"
         val original = ImportCollection(key, "Private list imported with consent", listOf(c, a, b))
         db.library().importCollections(listOf(ImportSelection(original, true, false)), 1)

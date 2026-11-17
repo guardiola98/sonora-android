@@ -14,7 +14,7 @@ import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.sonora.music.accountimport.SpotifyExportParser
+import org.sonora.music.importing.SpotifyExportParser
 import org.sonora.music.ui.MusicViewModel
 import java.io.File
 
@@ -62,14 +62,14 @@ class SpotifyExportDeviceTest {
                 click("Library"); click("Import music")
                 repeat(2) { attempt ->
                     scenario.onActivity { vm.importSpotifyFiles(listOf(Uri.fromFile(file))) }
-                    await("File playlist selection did not load") { vm.accountImporter.state.value.lists.size == 1 }
-                    assertTrue(vm.accountImporter.state.value.disconnected)
+                    await("File playlist selection did not load") { vm.spotifyImporter.state.value.lists.size == 1 }
+                    assertTrue(vm.spotifyImporter.state.value.active)
                     click("Select ${source.name}")
                     click("Search selected songs online")
-                    assertFalse(vm.accountImporter.state.value.searchOnline)
+                    assertFalse(vm.spotifyImporter.state.value.searchOnline)
                     click("Review selected lists")
-                    await("Offline pending review missing") { !vm.accountImporter.state.value.busy && vm.accountImporter.state.value.pending == 1 }
-                    assertTrue(vm.accountImporter.state.value.review.single().songs.single().candidates.isEmpty())
+                    await("Offline pending review missing") { !vm.spotifyImporter.state.value.busy && vm.spotifyImporter.state.value.pending == 1 }
+                    assertTrue(vm.spotifyImporter.state.value.review.single().songs.single().candidates.isEmpty())
                     if (attempt == 0) {
                         Thread.sleep(400)
                         capture("spotify-export-review.png")

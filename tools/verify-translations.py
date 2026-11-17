@@ -38,7 +38,7 @@ def main():
     args = args.parse_args()
     english = read('')
     assert len(set(english.values())) == len(english), 'Duplicate English template'
-    for locale in ('-es', '-ca'):
+    for locale in ('-es', '-ca', '-fr', '-it'):
         translated = read(locale)
         assert english.keys() == translated.keys(), f'Resource keys differ for {locale}'
         for name, source in english.items():
@@ -60,7 +60,7 @@ def main():
             source = json.loads(match[1].replace('\\$', '$'))
             assert source in sources, f'Missing resource for {path.relative_to(ROOT)}: {source}'
             calls += 1
-    print(f'OK: {len(english)} resources in English, Spanish and Catalan; {calls} explicit translated templates.')
+    print(f'OK: {len(english)} resources in English, Spanish, Catalan, French and Italian; {calls} explicit translated templates.')
 
 
 if __name__ == '__main__':

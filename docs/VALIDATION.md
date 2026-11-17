@@ -1,8 +1,8 @@
-Current release: [0.8 offline audio, public playlists and language validation](RELEASE-080-VALIDATION.md). Earlier reports retain their original version scope.
+Current release: [0.8.1 language access and simplified import validation](RELEASE-081-VALIDATION.md). Earlier reports retain their original version scope.
 
-Current import follow-up: [0.7.1 Spotify export validation](SPOTIFY-EXPORT-VALIDATION.md). The evidence below retains its original version scope.
+Earlier import report: [0.7.1 Spotify export validation](SPOTIFY-EXPORT-VALIDATION.md). The evidence below retains its original version scope.
 
-Latest development change: [temporary OAuth import validation](OAUTH-VALIDATION.md). The evidence below describes the published 0.6 release.
+The older sections below describe the published 0.6 release.
 
 # Sonora 0.6.0-beta01 publication validation
 

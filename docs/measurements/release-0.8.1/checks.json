@@ -1,0 +1,102 @@
+{
+  "version": "0.8.1-beta01",
+  "versionCode": 13,
+  "unit": {
+    "tests": 141,
+    "passed": 139,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2,
+    "liveImportEnabled": true
+  },
+  "liveImport": {
+    "spotifyPublicEntries": 50,
+    "youtubeMusicEntries": 200,
+    "youtubeMusicPages": 2
+  },
+  "translations": {
+    "languages": [
+      "en",
+      "es",
+      "ca",
+      "fr",
+      "it"
+    ],
+    "resourcesEach": 624,
+    "explicitTemplates": 673,
+    "legacyApi": 28
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 22
+  },
+  "publishingGuardsPassed": 3,
+  "oauthAdaptersAbsentFromReleaseDex": true,
+  "device": {
+    "api": 35,
+    "abi": "x86_64",
+    "normalPassed": 7,
+    "compactDp": [
+      320,
+      570
+    ],
+    "compactPassed": 2,
+    "nativeLanguagePickerAllFiveLanguages": true,
+    "clipboardAndWrongProviderValidation": true,
+    "firstTwoImportOptionsVisibleAndOrdered": true,
+    "languageChangeKeepsLibraryAndQueue": true,
+    "spotifyExportAndTakeoutReimportWithoutDuplicates": true,
+    "offlineMusicAndPodcastPlayback": true,
+    "playerAndQueueShuffle": true
+  },
+  "upgrade": {
+    "fromVersion": "0.8.0-beta01",
+    "fromVersionCode": 12,
+    "installation": "adb install -r; no clear or uninstall",
+    "unchangedLibraryRows": {
+      "tracks": {
+        "rows": 13,
+        "unchanged": true
+      },
+      "playlists": {
+        "rows": 1,
+        "unchanged": true
+      },
+      "playlist_entries": {
+        "rows": 1,
+        "unchanged": true
+      },
+      "playback_checkpoint": {
+        "rows": 1,
+        "unchanged": true
+      },
+      "podcast_feeds": {
+        "rows": 2,
+        "unchanged": true
+      },
+      "podcast_episodes": {
+        "rows": 500,
+        "unchanged": true
+      },
+      "podcast_progress": {
+        "rows": 4,
+        "unchanged": true
+      },
+      "listening_preferences": {
+        "rows": 5,
+        "unchanged": true
+      }
+    }
+  },
+  "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2",
+  "runtimeSha256": {
+    "classes.dex": "96d39210a3351ccdb1c69df7f1b65c36f69b84d77bd87f4edcb3dc5434989837",
+    "classes2.dex": "d790b5d2e8dca7131a973b1781433223ad87f48bc651304cb0f59a9d48910831",
+    "classes3.dex": "e7d09f904262792033a635cb444a0beac639e9c401df45f39639b1c6dd4c45d5",
+    "classes4.dex": "b76bd44a227ca0d633f0b50138699e3d6c388f92d8700b2070325a55a8b6133c",
+    "classes5.dex": "a13bdb208685f7b09d1efe868e3bfb500713f51910bea1a79f605602ea742d47",
+    "classes6.dex": "dda9ac5ddd194bbea256378de5761c66f8cd045031fa9f57a645b9f5ef2ccbcd",
+    "AndroidManifest.xml": "7b1155b3e6c182c48c57100564adbd4367bc3449957d3409b50105cf331939da",
+    "resources.arsc": "b3e55f9b2c46bd4de0f34da2b399522f62acb4b49ba36bc67b90c3df1040576f"
+  }
+}

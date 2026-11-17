@@ -5,6 +5,9 @@ import org.sonora.music.i18n.tr
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,26 +28,20 @@ import org.sonora.music.domain.YouTubeLinks
 
 @UnstableApi
 @Composable fun ImportScreen(vm: MusicViewModel, state: ImportState, onClose: () -> Unit) {
-    val accountState by vm.accountImporter.state.collectAsState()
+    val spotifyState by vm.spotifyImporter.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
-    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(vm, lifecycle) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP && !vm.accountImporter.state.value.authorizing && !vm.accountImporter.state.value.disconnected) vm.accountImporter.cancel()
-        }
-        lifecycle.addObserver(observer)
+    DisposableEffect(vm, context) {
         onDispose {
-            lifecycle.removeObserver(observer)
-            if ((context as? android.app.Activity)?.isChangingConfigurations != true) vm.accountImporter.cancel()
+            if ((context as? android.app.Activity)?.isChangingConfigurations != true) vm.spotifyImporter.cancel()
         }
     }
-    if (accountState.provider != null || accountState.error != null) {
-        AccountImportReview(vm.accountImporter, accountState)
+    if (spotifyState.active || spotifyState.error != null) {
+        SpotifyImportReview(vm.spotifyImporter, spotifyState)
         return
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), vm::importFiles)
     val spotifyPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), vm::importSpotifyFiles)
-    var url by rememberSaveable { mutableStateOf("") }
+    var linkProvider by rememberSaveable { mutableStateOf<String?>(null) }
     var help by rememberSaveable { mutableStateOf(false) }
     var browserError by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
@@ -54,7 +51,7 @@ import org.sonora.music.domain.YouTubeLinks
                 IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, tr("Back to library")) }
                 Text(tr("Import your music"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             }
-            Text(tr("Copy playlists and exported likes into your local Sonora library."), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr("Choose a playlist link or import a file."), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         state.error?.let { message -> item {
             Surface(color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
@@ -119,22 +116,14 @@ import org.sonora.music.domain.YouTubeLinks
                 TextButton(onClick = vm.importer::reset) { Text(tr("Choose another source")) }
             }
         } else {
-            item {
-                OutlinedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(tr("Import a playlist link"), style = MaterialTheme.typography.titleLarge)
-                        Text(tr("Paste a public Spotify or YouTube Music playlist link. No sign-in is needed; review the songs before saving."))
-                        OutlinedTextField(url, { url = it }, Modifier.fillMaxWidth(), label = { Text(tr("Playlist link")) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
-                        Button(onClick = { vm.importPublicPlaylist(url) }, enabled = url.isNotBlank()) { Text(tr("Preview playlist")) }
-                    }
-                }
-            }
-            item { AccountImportButtons(vm) }
+            item { PlaylistLinkOption(1, "YouTube Music", tr("Public or unlisted playlist link")) { linkProvider = "youtube" } }
+            item { PlaylistLinkOption(2, "Spotify", tr("Public playlist link")) { linkProvider = "spotify" } }
+            item { Text(tr("Or import a file"), style = MaterialTheme.typography.titleMedium) }
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(tr("Import a Spotify export"), style = MaterialTheme.typography.titleLarge)
-                        Text(tr("Choose your account-data ZIP, Playlist JSON or YourLibrary.json. No developer account or OAuth setup needed. Select lists first, then review playable versions."))
+                        Text(tr("Choose your account-data ZIP, Playlist JSON or YourLibrary.json. Select lists first, then review playable versions."))
                         Button(onClick = { spotifyPicker.launch(arrayOf("*/*")) }) { Text(tr("Choose Spotify ZIP / JSON")) }
                         Text(tr("In Spotify account → Privacy settings, request Account data. When it is ready, download it and return here. Only playlist and saved-song files are read; profiles, payments and history are ignored."), style = MaterialTheme.typography.bodySmall)
                         TextButton(onClick = { browserError = runCatching { uriHandler.openUri("https://www.spotify.com/account/privacy/") }.isFailure }) { Text(tr("Open Spotify data export")) }
@@ -159,8 +148,55 @@ import org.sonora.music.domain.YouTubeLinks
                     TextButton(onClick = { browserError = runCatching { uriHandler.openUri("https://takeout.google.com/") }.isFailure }) { Text(tr("Open Google Takeout")) }
                     if (browserError) Text(tr("Open https://takeout.google.com in a browser on your phone or computer."))
                 }
-                Text(tr("This is a one-time copy. Temporary authorization ends after reading your selection; account synchronization is not included. After importing, use Download playlist to listen offline."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("Importing saves a copy in Sonora. After importing, use Download playlist to listen offline."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
+    linkProvider?.let { provider -> PlaylistLinkDialog(provider, { linkProvider = null }) { link ->
+        linkProvider = null
+        vm.importPublicPlaylist(link)
+    } }
+
+}
+
+@Composable private fun PlaylistLinkOption(number: Int, name: String, detail: String, onClick: () -> Unit) {
+    OutlinedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(number.toString(), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+            Column(Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.AutoMirrored.Rounded.ArrowForward, null)
+        }
+    }
+}
+
+@Composable private fun PlaylistLinkDialog(provider: String, onClose: () -> Unit, onImport: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val name = if (provider == "youtube") "YouTube Music" else "Spotify"
+    var link by rememberSaveable(provider) { mutableStateOf("") }
+    var error by rememberSaveable(provider) { mutableStateOf<String?>(null) }
+    val submit = {
+        val valid = if (provider == "youtube") YouTubeLinks.playlist(link) != null
+            else org.sonora.music.importing.PublicSpotifyPlaylist.accepts(link)
+        if (valid) onImport(link.trim()) else error = tr("Paste a %1\$s playlist link.", name)
+    }
+    AlertDialog(onDismissRequest = onClose, title = { Text(tr("%1\$s playlist", name)) }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(tr("Open the playlist → Share → Copy link, then paste it here. No sign-in needed."))
+            OutlinedTextField(link, { link = it; error = null }, Modifier.fillMaxWidth(),
+                label = { Text(tr("Playlist link")) }, singleLine = true, isError = error != null,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { submit() }))
+            TextButton(onClick = {
+                val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                val text = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                if (text.isBlank()) error = tr("Copy a playlist link first.") else { link = text.trim(); error = null }
+            }) { Icon(Icons.Rounded.ContentPaste, null); Spacer(Modifier.width(8.dp)); Text(tr("Paste link")) }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (provider == "spotify") Text(tr("Spotify may show only part of a long playlist. Check the track count before importing."), style = MaterialTheme.typography.bodySmall)
+        }
+    }, confirmButton = { TextButton(onClick = { submit() }, enabled = link.isNotBlank()) { Text(tr("Preview playlist")) } },
+        dismissButton = { TextButton(onClick = onClose) { Text(tr("Cancel")) } })
 }

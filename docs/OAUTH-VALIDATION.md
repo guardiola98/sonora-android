@@ -1,3 +1,5 @@
+> Historical evidence for the removed implementation. OAuth is absent from Sonora 0.8.1 and later; use [public links](PUBLIC-PLAYLISTS.md).
+
 # Account import validation — 0.7.0-beta01
 
 This change adds configuration-gated Spotify import and an experimental YouTube API adapter. **No real Spotify/Google account authorization was performed.** There were no registered client IDs or deployed Google broker available. YouTube's permanent-copy/background-player policy conflict also remains unresolved; its adapter is disabled by default. Passing tests does not establish provider approval or prove real account access.

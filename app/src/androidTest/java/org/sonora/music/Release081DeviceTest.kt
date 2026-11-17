@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit
 /** Explicit opt-in live fixture is downloaded only to the test emulator, never bundled. */
 @RunWith(AndroidJUnit4::class)
 @UnstableApi
-class Release080DeviceTest {
+class Release081DeviceTest {
     @get:org.junit.Rule val noSpeculation = SpeculationDisabledRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app = instrumentation.targetContext.applicationContext as SonoraApplication
@@ -61,7 +61,18 @@ class Release080DeviceTest {
         await("Missing control: $label") {
             var target = node(label) ?: return@await false
             while (!target.isClickable && !target.isSelected && target.parent != null) target = target.parent
-            target.isEnabled && (if (target.isClickable) target.performAction(AccessibilityNodeInfo.ACTION_CLICK) else target.isSelected)
+            target.isEnabled && if (target.isClickable) target.performAction(AccessibilityNodeInfo.ACTION_CLICK) else if (target.isSelected) {
+                // Selected navigation tabs omit ACTION_CLICK. Tap their observed bounds:
+                // treating them as a no-op can race the previous screen's cached tree.
+                val bounds = Rect().also(target::getBoundsInScreen)
+                val time = SystemClock.uptimeMillis()
+                listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP).all { action ->
+                    val event = MotionEvent.obtain(time, SystemClock.uptimeMillis(), action, bounds.exactCenterX(), bounds.exactCenterY(), 0)
+                    event.source = InputDevice.SOURCE_TOUCHSCREEN
+                    val injected = instrumentation.getUiAutomation(0).injectInputEvent(event, true)
+                    event.recycle(); injected
+                }
+            } else false
         }
         instrumentation.waitForIdleSync()
     }
@@ -162,16 +173,16 @@ class Release080DeviceTest {
             main { player.pause(); assertNull(player.playerError) }
             click(track.title)
             await("Offline player status missing") { node(tr("Downloaded")) != null }
-            screenshot("release-080-offline-player")
+            screenshot("release-081-offline-player")
             click(tr("Close player")); click(tr("Library"))
             val tab = tr("Downloads · %1\$s", app.graph.downloads.state.value.items.count { it.ready })
             reveal(tab); click(tab)
             await("Offline screen missing") { node(tr("Play downloaded")) != null }
-            screenshot("release-080-offline-downloads")
+            screenshot("release-081-offline-downloads")
             assertNotNull(runBlocking { app.graph.library.playlist(preferences.getLong("playlist", -1)) })
         }
     }
-    @Test fun changeLanguageThroughSettingsAndKeepTheLibraryAcrossRecreation() {
+    @Test fun visibleLanguageButtonChangesAllLanguagesAndKeepsLibraryAcrossRecreation() {
         val before = AppLanguage.selected(app)
         val count = runBlocking { app.graph.library.exportBackup().tracks.size }
         try {
@@ -185,32 +196,45 @@ class Release080DeviceTest {
                 main { player.pause(); queue = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId } }
                 scenario.onActivity { AppLanguage.select(it, "en") }
                 await("English UI missing") { node("About Sonora") != null }
-                for ((tag, nativeName) in listOf("es" to "Español", "ca" to "Català")) {
-                    click(tr("About Sonora")); reveal(tr("App language")); click(tr("App language"))
+                for ((tag, nativeName) in listOf("es" to "Español", "fr" to "Français", "it" to "Italiano", "en" to "English", "ca" to "Català")) {
+                    click(tr("Language"))
+                    screenshot("release-081-language-picker")
                     var previousActivity: MainActivity? = null
                     scenario.onActivity { previousActivity = it }
                     click(nativeName)
                     await("Language did not recreate the activity in $tag") {
                         var recreated = false
                         scenario.onActivity { recreated = it !== previousActivity && it.resources.configuration.locales[0].language == tag }
-                        recreated && AppLanguage.selected(app).startsWith(tag) && node(tr("Done")) != null
+                        recreated && AppLanguage.selected(app).startsWith(tag) && node(tr("Language")) != null
                     }
-                    click(tr("Done")); click(tr("Home"))
-                    screenshot("release-080-$tag-home")
-                    click(tr("Library")); click(tr("Import music"))
-                    reveal(tr("Preview playlist"))
-                    await("Translated public import missing") { node(tr("Preview playlist")) != null }
-                    screenshot("release-080-$tag-import")
-                    instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
-                    await("Translated top bar missing") { node(tr("About Sonora")) != null }
+                    click(tr("Home"))
+                    await("Home did not open") { node(tr("Your next discovery")) != null }
+                    screenshot("release-081-$tag-home")
+                    click(tr("Library"))
+                    await("Library did not open") { node(tr("Your library")) != null }
+                    click(tr("Import music"))
+                    await("Both public import choices must be visible without scrolling") { node("YouTube Music") != null && node("Spotify") != null }
+                    val youtubeBounds = Rect().also(node("YouTube Music")!!::getBoundsInScreen)
+                    val spotifyBounds = Rect().also(node("Spotify")!!::getBoundsInScreen)
+                    assertTrue("YouTube Music must be the first option", youtubeBounds.top < spotifyBounds.top)
+                    screenshot("release-081-$tag-import")
+                    click("YouTube Music")
+                    await("YouTube link dialog missing") { node(tr("Paste link")) != null }
+                    screenshot("release-081-$tag-link")
+                    click(tr("Cancel"))
+                    click("Spotify")
+                    await("Spotify link dialog missing") { node(tr("Spotify may show only part of a long playlist. Check the track count before importing.")) != null }
+                    click(tr("Cancel"))
+                    click(tr("Back to library"))
+                    await("Library did not return after closing import") { node(tr("Your library")) != null && node(tr("Import music")) != null }
                     val tab = tr("Downloads · %1\$s", app.graph.downloads.state.value.items.count { it.ready })
                     reveal(tab); click(tab)
                     await("Translated downloads missing") { node(tr("Wi-Fi only")) != null }
-                    screenshot("release-080-$tag-downloads")
+                    screenshot("release-081-$tag-downloads")
                     if (downloaded != null) {
                         click(downloaded.title)
                         await("Translated player download missing") { node(tr("Downloaded")) != null }
-                        screenshot("release-080-$tag-player")
+                        screenshot("release-081-$tag-player")
                         click(tr("Close player"))
                     }
                 }
@@ -219,6 +243,34 @@ class Release080DeviceTest {
                 assertEquals("ca", AppLanguage.selected(app))
                 main { assertEquals(queue, (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }) }
                 assertEquals(count, runBlocking { app.graph.library.exportBackup().tracks.size })
+            }
+        } finally {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario -> scenario.onActivity { AppLanguage.select(it, before.substringBefore(',')) } }
+        }
+    }
+    @Test fun linkChoicesPasteClipboardAndRejectTheOtherProviderWithoutStartingImport() {
+        val before = AppLanguage.selected(app)
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { AppLanguage.select(it, "en") }
+                await("English UI missing") { node("Language") != null }
+                click("Library"); click("Import music")
+                for ((provider, wrongLink) in listOf("YouTube Music" to "https://open.spotify.com/playlist/37i9dQZEVXbMDoHDwVN2tF",
+                    "Spotify" to "https://music.youtube.com/playlist?list=PLfixture123")) {
+                    click(provider)
+                    main { app.getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("playlist", wrongLink)) }
+                    click("Paste link")
+                    await("Clipboard link was not pasted") { node(wrongLink) != null }
+                    click("Preview playlist")
+                    await("Wrong provider needs an inline explanation") { node("Paste a $provider playlist link.") != null }
+                    scenario.onActivity {
+                        val vm = ViewModelProvider(it, MusicViewModel.Factory(app))[MusicViewModel::class.java]
+                        assertFalse(vm.spotifyImporter.state.value.active); assertFalse(vm.importer.state.value.busy)
+                    }
+                    click("Cancel")
+                }
+                await("Import choices did not return after closing the dialog") { node("YouTube Music") != null && node("Spotify") != null }
+                main { app.getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("", "")) }
             }
         } finally {
             ActivityScenario.launch(MainActivity::class.java).use { scenario -> scenario.onActivity { AppLanguage.select(it, before.substringBefore(',')) } }

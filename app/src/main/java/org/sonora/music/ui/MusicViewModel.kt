@@ -9,7 +9,7 @@ import kotlinx.coroutines.runInterruptible
 import org.sonora.music.data.*
 import kotlinx.coroutines.withContext
 import org.sonora.music.domain.ImportPreview
-import org.sonora.music.accountimport.*
+import org.sonora.music.importing.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -87,15 +87,11 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
     val importer = ImportPresenter(graph.importer, viewModelScope)
     private val publicSpotify = PublicSpotifyPlaylist()
     fun importPublicPlaylist(link: String) {
-        if (PublicSpotifyPlaylist.accepts(link)) accountImporter.loadSpotifyPublicPlaylist { publicSpotify.read(link) }
+        if (PublicSpotifyPlaylist.accepts(link)) spotifyImporter.loadSpotifyPublicPlaylist { publicSpotify.read(link) }
         else if (org.sonora.music.domain.YouTubeLinks.playlist(link) != null) importer.loadPlaylist(link)
         else importer.load { throw IllegalArgumentException(tr("Paste a public Spotify or YouTube Music playlist link.")) }
     }
-    private val accountHttp = AccountHttp()
-    val spotifyAuthorization = SpotifyAuthorization(accountHttp)
-    val googleImportAuthorization = GoogleImportAuthorization(org.sonora.music.BuildConfig.GOOGLE_CLIENT_ID, org.sonora.music.BuildConfig.GOOGLE_REDIRECT_URI) { code, verifier -> accountHttp.googleToken(org.sonora.music.BuildConfig.GOOGLE_TOKEN_ENDPOINT, code, verifier) }
-    val accountImporter = AccountImportPresenter(viewModelScope, graph.source, graph.source,
-        { provider -> if (provider == ImportProvider.SPOTIFY) SpotifyPlaylistSource(accountHttp) else YouTubePlaylistSource(accountHttp) },
+    val spotifyImporter = SpotifyImportPresenter(viewModelScope, graph.source, graph.source,
         { preview -> importer.load { preview } })
     val playlists = graph.library.playlists().catch { mutableMessage.value = tr("Could not read playlists."); emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -183,7 +179,7 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
     }
     fun importSpotifyFiles(uris: List<Uri>) {
         if (uris.isEmpty()) return
-        accountImporter.loadSpotifyExport {
+        spotifyImporter.loadSpotifyExport {
             runInterruptible(Dispatchers.IO) {
                 if (uris.size > 20) throw ImportAccessException(tr("Select up to 20 playlist/library files at a time."))
                 val result = mutableListOf<ReviewedPlaylist>()
@@ -239,7 +235,7 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
         catch (_: Exception) { mutableMessage.value = tr("History could not be cleared.") }
     }
     fun dismissMessage() { mutableMessage.value = null }
-    override fun onCleared() { accountImporter.cancel(); playback.release() }
+    override fun onCleared() { spotifyImporter.cancel(); playback.release() }
     class Factory(private val app: SonoraApplication) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = MusicViewModel(app) as T
     }

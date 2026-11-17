@@ -30,10 +30,10 @@ class LanguageTest {
         assertEquals("Descargando… 37%", localizedString(language("es"), "Downloading… %1\$s%%", 37))
         assertEquals("Afig Cançó d’estiu als preferits", localizedString(language("ca"), "Favorite %1\$s", "Cançó d’estiu"))
         assertEquals("App's title", localizedString(language("es"), "App's title"))
-        assertTrue(localizedString(language("ca"), "This playlist is no longer available to this account.").contains("llista"))
+        assertTrue(localizedString(language("ca"), "Playlist link").contains("llista"))
     }
-    @Test fun everyResourceResolvesWithoutBrokenFormattingInBothTranslations() {
-        for (tag in listOf("en", "es", "ca")) {
+    @Test fun everyResourceResolvesWithoutBrokenFormattingInAllLanguages() {
+        for (tag in listOf("en", "es", "ca", "fr", "it")) {
             val context = language(tag)
             for ((source, id) in stringIds) {
                 val count = Regex("%([0-9]+)\\\$s").findAll(source).map { it.groupValues[1].toInt() }.maxOrNull() ?: 0
@@ -55,6 +55,14 @@ class LanguageTest {
         assertEquals("Cançons", CatalogKind.SONGS.label)
         assertEquals("Reprodueix", tr("Play"))
         assertEquals("Cançó d’estiu", tr("Cançó d’estiu"))
+        select("fr")
+        assertEquals("fr", AppLanguage.locale.language)
+        assertEquals("Lire", tr("Play"))
+        assertEquals("Bibliothèque", tr("Library"))
+        select("it")
+        assertEquals("it", AppLanguage.locale.language)
+        assertEquals("Riproduci", tr("Play"))
+        assertEquals("Libreria", tr("Library"))
         select("en")
         assertEquals("Songs", CatalogKind.SONGS.label)
         assertEquals("Play", tr("Play"))

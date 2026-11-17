@@ -133,7 +133,7 @@ import org.sonora.music.playback.PlayerSnapshot
                         Icon(Icons.Rounded.GraphicEq, null, tint = MaterialTheme.colorScheme.primary)
                         Text("sonora", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
                     }
-                }, actions = { IconButton(onClick = { showAbout = true }) { Icon(Icons.Rounded.Info, tr("About Sonora")) } },
+                }, actions = { LanguagePicker(); IconButton(onClick = { showAbout = true }) { Icon(Icons.Rounded.Info, tr("About Sonora")) } },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)) },
                 bottomBar = {
                     Column {
@@ -402,6 +402,7 @@ import org.sonora.music.playback.PlayerSnapshot
     val uri = LocalUriHandler.current
     AlertDialog(onDismissRequest = onDismiss, title = { Text(tr("Sonora %1\$s", BuildConfig.VERSION_NAME)) },
         text = { Column(Modifier.verticalScroll(rememberScrollState())) {
+            LanguagePicker()
             Text(tr("An independent, open-source music and podcast player. Built with NewPipeExtractor and Android Media3. Not affiliated with YouTube or Google."))
             Spacer(Modifier.height(12.dp))
             Text(tr("GPL-3.0-or-later. No Sonora account required. No ads or analytics. Favorites and history stay on this device. Streaming sends requests to YouTube, podcast publishers and image hosts. Podcast search uses Apple’s public directory."))
@@ -413,7 +414,6 @@ import org.sonora.music.playback.PlayerSnapshot
                 }
                 Switch(checked = preparationEnabled, onCheckedChange = onPreparationChanged)
             }
-            LanguagePicker()
             TextButton(onClick = onUpdates) { Text(tr("Updates")) }
             TextButton(onClick = onDiscovery) { Text(tr("Discovery & autoplay settings")) }
             TextButton(onClick = { uri.openUri("https://github.com/guardiola98/sonora-android") }) { Text(tr("Source code & licenses")) }

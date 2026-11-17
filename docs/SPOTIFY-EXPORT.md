@@ -1,6 +1,6 @@
 # Spotify export import
 
-Sonora 0.7.1 can read Spotify's official account-data export without connecting an account or requiring developer credentials. The account OAuth adapter remains a separate, configuration-gated option. Google Takeout and YouTube playlist-link imports remain available.
+Sonora can read Spotify's official account-data export without connecting an account or requiring developer credentials. Account sign-in was removed in 0.8.1. Google Takeout and YouTube playlist-link imports remain available.
 
 ## Use it
 
@@ -16,16 +16,15 @@ Spotify's [official account-data description](https://support.spotify.com/articl
 
 Source names and first-occurrence chosen-track order are preserved. Spotify's export commonly omits playlist IDs. For those lists the destination is `spotify:export:<SHA-256 of NFC playlist name>`, independent of filename, song count or track changes. This is a **name-based identity**, not a guessed Spotify playlist ID. Reimporting the same name merges new canonical YouTube URLs; renaming a source playlist creates a new destination. Different accounts with equal playlist names also share that file-import destination: choose a distinct source name before exporting if those should remain separate. Existing local order/edits/favorites/history are preserved.
 
-Same-name lists with different contents in a selected set are rejected, so their identities cannot silently collapse during preview. Identical duplicate files collapse once. When an export explicitly includes a valid Spotify playlist URI, it shares the `spotify:<ID>` destination with OAuth imports. Otherwise file and OAuth imports remain separate. Saved songs share `spotify:likes`; no account identifier is stored. A different chosen YouTube URL is a distinct track, even if it represents the same recording.
+Same-name lists with different contents in a selected set are rejected, so their identities cannot silently collapse during preview. Identical duplicate files collapse once. When an export explicitly includes a valid Spotify playlist URI, it shares the `spotify:<ID>` destination with public-link imports. Otherwise file and public-link imports remain separate. Saved songs share `spotify:likes`; no account identifier is stored. A different chosen YouTube URL is a distinct track, even if it represents the same recording.
 
 ## Privacy and bounds
 
 ZIP entries are never extracted. Only safe `Playlist*.json` and `YourLibrary.json` paths are decoded; traversal paths and unrelated files are discarded. All decompressed bytes, including ignored entries, count toward a 32 MiB limit. An individual decoded JSON file is limited to 8 MiB, JSON depth to 32, ZIP entries to 500, selection to 20 files, playlists to 2,000 and tracks to 10,000. Oversize imports fail before saving. For large account archives, select just the extracted playlist/library JSON using your file manager.
 
-Reading runs on the IO dispatcher with interruptible cancellation. Selected/unselected export metadata stays in memory until confirmation or cancellation; no original file, pending playlist, OAuth credential or account profile is added to Room/preferences/backups/logs. Only confirmed playable library entries and playlist identities are saved. Parsing and review do not require a connected account; individual lookups and enabled automatic matching require a network connection. Matching retains the existing 200-search limit, sequential pacing, timeout and pause after repeated empty/failing searches.
+Reading runs on the IO dispatcher with interruptible cancellation. Selected/unselected export metadata stays in memory until confirmation or cancellation; no original file, pending playlist, account profile is added to Room/preferences/backups/logs. Only confirmed playable library entries and playlist identities are saved. Parsing and review do not require a connected account; individual lookups and enabled automatic matching require a network connection. Matching retains the existing 200-search limit, sequential pacing, timeout and pause after repeated empty/failing searches.
 
 ## Direct-account imports remain blocked on external setup
 
-No Spotify client ID or tester account was available, and no Google OAuth project, approved use case or broker deployment was supplied. Do not advertise the released default APK as having a working Spotify/Google login. See [OAuth setup](OAUTH-IMPORT.md).
 
 Google Data Portability was rechecked as a possible permanent-copy alternative. Its [official workflow](https://developers.google.com/data-portability/user-guide/introduction) needs app approval and geographic availability. Archive [methods](https://developers.google.com/data-portability/user-guide/methods) can take minutes, hours or days and suggest polling every 5–60 minutes. It is not an immediate list-picker replacement within Sonora's memory-only, no-refresh-token session. No new infrastructure or untested portability login is shipped. User-initiated Takeout remains the usable Google route.

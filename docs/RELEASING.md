@@ -38,7 +38,6 @@ python3 tools/configure-ci-signing.py
 
 The helper sends the existing `.signing/signing.properties` values and PKCS#12 file to the encrypted repository secrets `SONORA_KEYSTORE_BASE64`, `SONORA_STORE_PASSWORD`, `SONORA_KEY_ALIAS` and `SONORA_KEY_PASSWORD`, using stdin rather than command arguments. It never prints or commits their values. Missing secrets fail a new publication explicitly; no unsigned or newly keyed substitute is published. The current Codex GitHub connector cannot administer Actions secrets, and SSH push access alone cannot configure them.
 
-If enabled, the public OAuth configuration belongs in repository **variables** `SONORA_SPOTIFY_CLIENT_ID`, `SONORA_GOOGLE_CLIENT_ID`, `SONORA_GOOGLE_OAUTH_HOST`, and `SONORA_GOOGLE_IMPORT_APPROVED`. These are optional; preserve the values used for a release that enables those import providers. Client secrets never belong in the Android APK.
 
 GitHub initially creates Packages with private visibility. Set the package visibility to public in its GitHub settings if anonymous registry pulls are desired; regular users always have the public APK download in Releases. The package links to this repository through its OCI source label.
 

@@ -21,7 +21,7 @@ object AppLanguage {
             if (!preferences.getBoolean("system_migrated", false)) {
                 val manager = context.getSystemService(LocaleManager::class.java)
                 val previous = preferences.getString("tag", "").orEmpty()
-                if (manager.applicationLocales.isEmpty && previous in setOf("en", "es", "ca"))
+                if (manager.applicationLocales.isEmpty && previous in setOf("en", "es", "ca", "fr", "it"))
                     manager.applicationLocales = LocaleList.forLanguageTags(previous)
                 preferences.edit().putBoolean("system_migrated", true).apply()
             }
@@ -37,7 +37,7 @@ object AppLanguage {
         return context.createConfigurationContext(Configuration(context.resources.configuration).apply { setLocales(LocaleList.forLanguageTags(tag)) })
     }
     fun select(activity: Activity, tag: String) {
-        require(tag in setOf("", "en", "es", "ca"))
+        require(tag in setOf("", "en", "es", "ca", "fr", "it"))
         legacyResources = null
         if (Build.VERSION.SDK_INT >= 33) activity.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.forLanguageTags(tag)
         else {

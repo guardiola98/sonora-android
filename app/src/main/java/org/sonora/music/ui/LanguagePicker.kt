@@ -3,6 +3,10 @@ package org.sonora.music.ui
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -22,11 +26,15 @@ private fun Context.activity(): Activity? = when (this) {
 @Composable internal fun LanguagePicker() {
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
-    TextButton(onClick = { open = true }) { Text(tr("App language")) }
+    TextButton(onClick = { open = true }) {
+        Icon(Icons.Rounded.Language, null)
+        Spacer(Modifier.width(6.dp))
+        Text(tr("Language"), maxLines = 1)
+    }
     if (open) AlertDialog(onDismissRequest = { open = false }, title = { Text(tr("App language")) }, text = {
-        Column {
+        Column(Modifier.verticalScroll(rememberScrollState())) {
             val selected = AppLanguage.selected(context).substringBefore(',').substringBefore('-')
-            listOf("" to tr("System language"), "en" to "English", "es" to "Español", "ca" to "Català").forEach { (tag, label) ->
+            listOf("" to tr("System language"), "en" to "English", "es" to "Español", "ca" to "Català", "fr" to "Français", "it" to "Italiano").forEach { (tag, label) ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable {
                     open = false; context.activity()?.let { AppLanguage.select(it, tag) }
                 }, verticalAlignment = Alignment.CenterVertically) {

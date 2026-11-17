@@ -7,7 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.sonora.music.accountimport.*
+import org.sonora.music.importing.*
 import java.io.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream

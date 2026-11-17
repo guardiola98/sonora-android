@@ -43,10 +43,6 @@ jobs:
           SONORA_STORE_PASSWORD: ${{ secrets.SONORA_STORE_PASSWORD }}
           SONORA_KEY_ALIAS: ${{ secrets.SONORA_KEY_ALIAS }}
           SONORA_KEY_PASSWORD: ${{ secrets.SONORA_KEY_PASSWORD }}
-          SONORA_SPOTIFY_CLIENT_ID: ${{ vars.SONORA_SPOTIFY_CLIENT_ID }}
-          SONORA_GOOGLE_CLIENT_ID: ${{ vars.SONORA_GOOGLE_CLIENT_ID }}
-          SONORA_GOOGLE_OAUTH_HOST: ${{ vars.SONORA_GOOGLE_OAUTH_HOST }}
-          SONORA_GOOGLE_IMPORT_APPROVED: ${{ vars.SONORA_GOOGLE_IMPORT_APPROVED }}
         run: python3 tools/ci-release.py prepare
       - name: Keep existing in-app update channel current
         run: python3 tools/ci-release.py channel

@@ -1,6 +1,6 @@
 # Import public playlists
 
-Open **Library → Import music → Import a playlist link**, paste a public Spotify or YouTube Music playlist URL, and choose **Preview playlist**. This works in the standard APK without signing in, creating a developer account or configuring OAuth.
+Open **Library → Import music**. The first option is **1 YouTube Music**, followed by **2 Spotify**. Choose the provider, tap **Paste link** (or enter it manually), then **Preview playlist**. YouTube Music supports public/unlisted playlists; Spotify requires a public playlist. A link for the other provider shows an inline explanation without starting an import. This works in the standard APK without signing in, creating a developer account or configuring OAuth.
 
 ## Spotify
 
@@ -20,6 +20,6 @@ Public and unlisted YouTube Music/YouTube playlist links use the existing pagina
 
 Importing copies playlist metadata into your local library. To listen offline, open the imported playlist and choose **Download playlist**. See [downloads](DOWNLOADS.md) for progress, Wi-Fi preferences and storage controls.
 
-The optional account-authorization adapters remain separate under [OAuth setup](OAUTH-IMPORT.md). Public links do not require those adapters. Background/resumable import jobs are not included: keep Sonora open during preview and review.
+OAuth account sign-in, callbacks, client configuration and the optional broker were removed in 0.8.1. Background/resumable import jobs are not included: keep Sonora open during preview and review.
 
 Source reference: Spotify's [public embeds](https://developer.spotify.com/documentation/embeds). Their public page format is an external dependency, not a guaranteed full-playlist export API.

@@ -128,4 +128,11 @@ Attach only redacted logs when reporting failures. Audible output, physical head
 - [ ] Kill/reopen the process, disable Wi-Fi and mobile data, play completed audio and seek. Verify no source/feed refresh occurs.
 - [ ] Remove audio and confirm playlist membership, favorites and podcast positions remain. Test constrained storage and Android foreground-service timeout recovery.
 - [ ] Import a public Spotify link and a YouTube Music playlist link without account setup; review counts/order, ambiguous matches, cancellation and idempotent reimport. Check a short Spotify share URL and a private/unavailable URL.
-- [ ] Switch English → Spanish → Catalan using the picker, restart, and check the player, queue, downloads, import, settings, narrow layout and large text. Test Android 13+ system language settings and the Android 8–12 local preference.
+- [ ] Switch English → Spanish → Catalan → French → Italian using the top-bar Language button, restart, and check the player, queue, downloads, import, settings, narrow layout and large text. Test Android 13+ system language settings and the Android 8–12 local preference.
+
+## Simplified imports (0.8.1)
+
+- [ ] Without scrolling, find YouTube Music first and Spotify second in Import music; open either dialog, paste a link and preview.
+- [ ] Verify a link for the wrong provider shows an inline error and starts no request. Cancel preserves the library.
+- [ ] Confirm no account sign-in/setup is offered; local ZIP/CSV and Spotify ZIP/JSON imports remain available below links.
+- [ ] Change language directly from the top bar on a 320 dp screen, including large text; restart and verify the choice persists.

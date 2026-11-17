@@ -43,12 +43,16 @@ import org.sonora.music.domain.Track
             if (selected != null) IconButton(onClick = { vm.selectPlaylist(null); section = 2 }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, tr("Back to playlists")) }
             Text(selected?.playlist?.name ?: tr("Your library"), Modifier.weight(1f).padding(start = 8.dp), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (selected == null) {
-                IconButton(onClick = onImport) { Icon(Icons.Rounded.FileDownload, tr("Import music")) }
                 IconButton(onClick = onBackup) { Icon(Icons.Rounded.SettingsBackupRestore, tr("Backup and restore")) }
             } else {
                 IconButton(onClick = { rename = true }) { Icon(Icons.Rounded.Edit, tr("Rename playlist")) }
                 IconButton(onClick = { delete = selected }) { Icon(Icons.Rounded.DeleteOutline, tr("Delete playlist")) }
             }
+        }
+        if (selected == null) OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+            Icon(Icons.Rounded.FileDownload, null)
+            Spacer(Modifier.width(8.dp))
+            Text(tr("Import music"))
         }
         if (selected == null) LazyRow(contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             item { FilterChip(section == 0, { section = 0 }, label = { Text(tr("Favorites · %1\$s", favorites.size)) }) }

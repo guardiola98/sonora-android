@@ -624,4 +624,17 @@
     <string name="msg_4062bf5bae4d">"Import Spotify"</string>
     <string name="msg_6d69949cadf3">"Spotify peut n’afficher qu’une partie d’une longue playlist. Vérifiez le nombre de titres avant d’importer."</string>
     <string name="msg_d468642bd5fb">"Voir sur Spotify"</string>
+    <string name="finding_songs">"Recherche de titres · %1$s / %2$s"</string>
+    <string name="import_no_connection">"Impossible de trouver des titres lisibles. Vérifiez votre connexion et relancez l’importation. Rien n’a été enregistré."</string>
+    <string name="import_no_matches">"Aucun titre lisible trouvé. Rien n’a été enregistré. Essayez une autre playlist ou un autre fichier."</string>
+    <string name="import_automatic_versions">"Les meilleures versions disponibles sur YouTube sont ajoutées automatiquement, sans devoir vérifier chaque titre."</string>
+    <string name="import_match_counts">"%1$s entrées lues · %2$s trouvées · %3$s ignorées"</string>
+    <string name="import_duplicates_once">"%1$s entrées répétées n’ont été conservées qu’une seule fois."</string>
+    <string name="import_skip_retry">"Les entrées sans résultat disponible ont été ignorées. Relancez l’importation pour réessayer ; les titres existants sont conservés."</string>
+    <string name="import_search_failures">"%1$s recherches n’ont pas abouti. Vérifiez votre connexion et relancez l’importation pour ajouter les titres manquants."</string>
+    <string name="spotify_partial_export">"Spotify peut n’afficher qu’une partie d’une playlist. Pour importer les entrées manquantes, utilisez un export Spotify ZIP / JSON."</string>
+    <string name="spotify_export_auto">"Choisissez le ZIP des données de votre compte, le JSON des playlists ou YourLibrary.json. Toutes les playlists et tous les titres enregistrés inclus sont importés automatiquement avec les meilleures versions disponibles sur YouTube."</string>
+    <string name="spotify_link_auto">"Les meilleures versions disponibles sur YouTube sont ajoutées automatiquement. Spotify peut n’afficher qu’une partie d’une longue playlist."</string>
+    <string name="import_playlist_direct">"Importer la playlist"</string>
+    <string name="import_skipped_count">"%1$s entrées indisponibles ou non valides ignorées"</string>
 </resources>

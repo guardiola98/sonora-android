@@ -223,7 +223,7 @@ class Release081DeviceTest {
                     screenshot("release-081-$tag-link")
                     click(tr("Cancel"))
                     click("Spotify")
-                    await("Spotify link dialog missing") { node(tr("Spotify may show only part of a long playlist. Check the track count before importing.")) != null }
+                    await("Spotify link dialog missing") { node(tr("The best available YouTube versions are added automatically. Spotify may expose only part of a long playlist.")) != null }
                     click(tr("Cancel"))
                     click(tr("Back to library"))
                     await("Library did not return after closing import") { node(tr("Your library")) != null && node(tr("Import music")) != null }
@@ -261,7 +261,7 @@ class Release081DeviceTest {
                     main { app.getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("playlist", wrongLink)) }
                     click("Paste link")
                     await("Clipboard link was not pasted") { node(wrongLink) != null }
-                    click("Preview playlist")
+                    click("Import playlist")
                     await("Wrong provider needs an inline explanation") { node("Paste a $provider playlist link.") != null }
                     scenario.onActivity {
                         val vm = ViewModelProvider(it, MusicViewModel.Factory(app))[MusicViewModel::class.java]

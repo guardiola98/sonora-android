@@ -1,7 +1,6 @@
 package org.sonora.music
 
 import android.graphics.Bitmap
-import android.net.Uri
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.lifecycle.ViewModelProvider
 import androidx.media3.common.util.UnstableApi
@@ -15,6 +14,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.sonora.music.importing.SpotifyExportParser
+import org.sonora.music.domain.Track
 import org.sonora.music.ui.MusicViewModel
 import java.io.File
 
@@ -45,49 +45,43 @@ class SpotifyExportDeviceTest {
         instrumentation.waitForIdleSync()
     }
     private fun capture(name: String) {
+        takeScreenshot(); Thread.sleep(400)
         val bitmap = takeScreenshot()
         File(instrumentation.targetContext.getExternalFilesDir(null), name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
-    @Test fun spotifyFileCanBeSelectedReviewedOfflineAndReimportedWithoutAnAccount() {
+    @Test fun spotifyImportsSaveWithoutSelectionOrReviewAndReimportWithoutDuplicates() {
         val app = instrumentation.targetContext.applicationContext as SonoraApplication
-        val json = """{"playlists":[{"name":"Spotify export device fixture","items":[{"track":{"trackName":"Fixture pending review","artistName":"Sonora tests"}}]}]}"""
-        val source = SpotifyExportParser().read("Playlist1.json", json.byteInputStream()).single().source
-        val key = "spotify:${source.id}"
-        assumeTrue(runBlocking { app.graph.library.findPlaylist(key) == null })
-        val file = File(app.cacheDir, "Playlist1.json").apply { writeText(json) }
+        val json = """{"playlists":[{"name":"Spotify automatic device fixture","items":[{"track":{"trackName":"Fixture automatic song","artistName":"Sonora tests"}},{"episode":{"episodeName":"Unavailable episode"}}]}]}"""
+        val parsed = SpotifyExportParser().read("Playlist1.json", json.byteInputStream()).single()
+        val track = Track("https://www.youtube.com/watch?v=auto082test", "Fixture automatic song", "Sonora tests", "", 180)
+        val resolved = parsed.copy(songs = parsed.songs.mapIndexed { index, row -> if (index == 0) row.copy(chosen = track) else row })
+        val key = "spotify:${parsed.source.id}"
+        assumeTrue(runBlocking { app.graph.library.findPlaylist(key) == null && app.graph.library.find(track.url) == null })
         try {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 lateinit var vm: MusicViewModel
                 scenario.onActivity { vm = ViewModelProvider(it, MusicViewModel.Factory(app))[MusicViewModel::class.java] }
                 click("Library"); click("Import music")
                 repeat(2) { attempt ->
-                    scenario.onActivity { vm.importSpotifyFiles(listOf(Uri.fromFile(file))) }
-                    await("File playlist selection did not load") { vm.spotifyImporter.state.value.lists.size == 1 }
-                    assertTrue(vm.spotifyImporter.state.value.active)
-                    click("Select ${source.name}")
-                    click("Search selected songs online")
-                    assertFalse(vm.spotifyImporter.state.value.searchOnline)
-                    click("Review selected lists")
-                    await("Offline pending review missing") { !vm.spotifyImporter.state.value.busy && vm.spotifyImporter.state.value.pending == 1 }
-                    assertTrue(vm.spotifyImporter.state.value.review.single().songs.single().candidates.isEmpty())
-                    if (attempt == 0) {
-                        Thread.sleep(400)
-                        capture("spotify-export-review.png")
+                    scenario.onActivity {
+                        if (attempt == 0) vm.spotifyImporter.loadSpotifyPublicPlaylist { resolved }
+                        else vm.spotifyImporter.loadSpotifyExport { listOf(resolved) }
                     }
-                    click("Leave pending entries out")
-                    click("Continue to local import preview")
-                    await("Local preview missing") { vm.importer.state.value.preview != null }
-                    assertEquals(0, vm.importer.state.value.preview!!.trackCount)
-                    click("Import selected music")
-                    await("Local import did not complete") { vm.importer.state.value.summary != null }
-                    assertEquals(if (attempt == 0) 1 else 0, vm.importer.state.value.summary!!.newPlaylists)
-                    assertEquals(0, vm.importer.state.value.summary!!.newTracks)
-                    if (attempt == 0) click("Import more")
+                    await("Automatic import did not finish") { vm.spotifyImporter.state.value.summary != null }
+                    val state = vm.spotifyImporter.state.value
+                    assertEquals(2, state.entries); assertEquals(1, state.matched); assertEquals(1, state.skipped)
+                    assertEquals(if (attempt == 0) 1 else 0, state.summary!!.newPlaylists)
+                    assertEquals(if (attempt == 0) 1 else 0, state.summary!!.addedEntries)
+                    assertNull(vm.importer.state.value.preview)
+                    await("Completion missing from screen") {
+                        find(instrumentation.getUiAutomation(0).rootInActiveWindow) { it.text?.toString() == "Your music is ready" } != null
+                    }
+                    assertNull(find(instrumentation.getUiAutomation(0).rootInActiveWindow) { it.text?.toString() in setOf("Select playlists", "Review playable versions", "Import selected music") })
+                    if (attempt == 0) { capture("spotify-automatic-complete.png"); click("Import more") }
                 }
             }
         } finally {
             runBlocking { app.graph.library.findPlaylist(key)?.let { app.graph.library.deletePlaylist(it.id) } }
-            file.delete()
         }
     }
 }

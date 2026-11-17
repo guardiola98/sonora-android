@@ -91,8 +91,9 @@ class MusicViewModel(private val app: SonoraApplication) : ViewModel() {
         else if (org.sonora.music.domain.YouTubeLinks.playlist(link) != null) importer.loadPlaylist(link)
         else importer.load { throw IllegalArgumentException(tr("Paste a public Spotify or YouTube Music playlist link.")) }
     }
-    val spotifyImporter = SpotifyImportPresenter(viewModelScope, graph.source, graph.source,
-        { preview -> importer.load { preview } })
+    val spotifyImporter = SpotifyImportPresenter(viewModelScope, graph.source) { selections ->
+        graph.importer.save(selections, unresolved = 0)
+    }
     val playlists = graph.library.playlists().catch { mutableMessage.value = tr("Could not read playlists."); emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private val selection = MutableStateFlow<Long?>(null)

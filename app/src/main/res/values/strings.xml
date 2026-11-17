@@ -624,4 +624,17 @@
     <string name="msg_4062bf5bae4d">"Spotify import"</string>
     <string name="msg_6d69949cadf3">"Spotify may show only part of a long playlist. Check the track count before importing."</string>
     <string name="msg_d468642bd5fb">"View on Spotify"</string>
+    <string name="finding_songs">"Finding songs · %1$s / %2$s"</string>
+    <string name="import_no_connection">"Could not find playable songs. Check your connection and import again. Nothing was saved."</string>
+    <string name="import_no_matches">"No playable songs were found. Nothing was saved. Try another playlist or file."</string>
+    <string name="import_automatic_versions">"The best available YouTube versions are added automatically. No song review needed."</string>
+    <string name="import_match_counts">"%1$s entries read · %2$s matched · %3$s skipped"</string>
+    <string name="import_duplicates_once">"%1$s repeated entries were kept only once."</string>
+    <string name="import_skip_retry">"Entries with no available result were skipped. Import again to retry; existing songs are kept."</string>
+    <string name="import_search_failures">"%1$s searches could not finish. Check your connection and import again to add missing songs."</string>
+    <string name="spotify_partial_export">"Spotify may expose only part of a playlist. To import missing entries, use a Spotify ZIP / JSON export."</string>
+    <string name="spotify_export_auto">"Choose your account-data ZIP, Playlist JSON or YourLibrary.json. All included playlists and saved songs are imported automatically using the best available YouTube versions."</string>
+    <string name="spotify_link_auto">"The best available YouTube versions are added automatically. Spotify may expose only part of a long playlist."</string>
+    <string name="import_playlist_direct">"Import playlist"</string>
+    <string name="import_skipped_count">"%1$s unavailable/invalid entries skipped"</string>
 </resources>

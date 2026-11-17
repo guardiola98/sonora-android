@@ -624,4 +624,17 @@
     <string name="msg_4062bf5bae4d">"Importación de Spotify"</string>
     <string name="msg_6d69949cadf3">"Spotify puede mostrar solo parte de una lista larga. Comprueba el número de canciones antes de importar."</string>
     <string name="msg_d468642bd5fb">"Ver en Spotify"</string>
+    <string name="finding_songs">"Buscando canciones · %1$s / %2$s"</string>
+    <string name="import_no_connection">"No se han encontrado canciones reproducibles. Comprueba la conexión e importa de nuevo. No se ha guardado nada."</string>
+    <string name="import_no_matches">"No se han encontrado canciones reproducibles. No se ha guardado nada. Prueba otra lista o archivo."</string>
+    <string name="import_automatic_versions">"Se añaden automáticamente las mejores versiones disponibles en YouTube. No hace falta revisar las canciones."</string>
+    <string name="import_match_counts">"%1$s entradas leídas · %2$s encontradas · %3$s omitidas"</string>
+    <string name="import_duplicates_once">"Se ha conservado una sola copia de %1$s entradas repetidas."</string>
+    <string name="import_skip_retry">"Se han omitido las entradas sin resultados disponibles. Importa de nuevo para reintentarlo; se conservan las canciones existentes."</string>
+    <string name="import_search_failures">"No se han podido completar %1$s búsquedas. Comprueba la conexión e importa de nuevo para añadir las canciones que faltan."</string>
+    <string name="spotify_partial_export">"Spotify puede mostrar solo parte de una lista. Para importar las entradas que faltan, usa una exportación ZIP / JSON de Spotify."</string>
+    <string name="spotify_export_auto">"Elige el ZIP con los datos de tu cuenta, el JSON de listas o YourLibrary.json. Todas las listas y canciones guardadas incluidas se importan automáticamente con las mejores versiones disponibles en YouTube."</string>
+    <string name="spotify_link_auto">"Se añaden automáticamente las mejores versiones disponibles en YouTube. Spotify puede mostrar solo parte de una lista larga."</string>
+    <string name="import_playlist_direct">"Importar lista"</string>
+    <string name="import_skipped_count">"%1$s entradas no disponibles o no válidas omitidas"</string>
 </resources>

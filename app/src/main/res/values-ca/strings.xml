@@ -624,4 +624,17 @@
     <string name="msg_4062bf5bae4d">"Importació de Spotify"</string>
     <string name="msg_6d69949cadf3">"Spotify pot mostrar només part d’una llista llarga. Comprova el nombre de cançons abans d’importar."</string>
     <string name="msg_d468642bd5fb">"Mostra en Spotify"</string>
+    <string name="finding_songs">"Buscant cançons · %1$s / %2$s"</string>
+    <string name="import_no_connection">"No s’han trobat cançons reproduïbles. Comprova la connexió i torna a importar. No s’ha guardat res."</string>
+    <string name="import_no_matches">"No s’han trobat cançons reproduïbles. No s’ha guardat res. Prova una altra llista o fitxer."</string>
+    <string name="import_automatic_versions">"S’afigen automàticament les millors versions disponibles a YouTube. No cal revisar les cançons."</string>
+    <string name="import_match_counts">"%1$s entrades llegides · %2$s trobades · %3$s omeses"</string>
+    <string name="import_duplicates_once">"S’ha conservat una sola còpia de %1$s entrades repetides."</string>
+    <string name="import_skip_retry">"S’han omés les entrades sense resultats disponibles. Torna a importar per a reintentar-ho; es conserven les cançons existents."</string>
+    <string name="import_search_failures">"No s’han pogut completar %1$s cerques. Comprova la connexió i torna a importar per a afegir les cançons que falten."</string>
+    <string name="spotify_partial_export">"Spotify pot mostrar només part d’una llista. Per a importar les entrades que falten, usa una exportació ZIP / JSON de Spotify."</string>
+    <string name="spotify_export_auto">"Tria el ZIP amb les dades del teu compte, el JSON de llistes o YourLibrary.json. Totes les llistes i cançons guardades incloses s’importen automàticament amb les millors versions disponibles a YouTube."</string>
+    <string name="spotify_link_auto">"S’afigen automàticament les millors versions disponibles a YouTube. Spotify pot mostrar només part d’una llista llarga."</string>
+    <string name="import_playlist_direct">"Importa la llista"</string>
+    <string name="import_skipped_count">"%1$s entrades no disponibles o no vàlides omeses"</string>
 </resources>

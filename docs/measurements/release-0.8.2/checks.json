@@ -1,0 +1,116 @@
+{
+  "version": "0.8.2-beta01",
+  "versionCode": 14,
+  "unit": {
+    "tests": 147,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2,
+    "passed": 145,
+    "liveImportEnabled": true
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 22
+  },
+  "liveImport": {
+    "spotifyPublicEntries": 50,
+    "spotifySampleSongs": 3,
+    "spotifySampleMatches": 3,
+    "spotifySampleSearchAndHandoffMs": 607,
+    "youtubeMusicEntries": 200,
+    "youtubeMusicPages": 2
+  },
+  "syntheticSearch": {
+    "sourceEntries": 207,
+    "distinctRequests": 203,
+    "maxConcurrentRequests": 3,
+    "virtualElapsedMs": 2520,
+    "sequentialServiceMs": 7470
+  },
+  "translations": {
+    "languages": [
+      "en",
+      "es",
+      "ca",
+      "fr",
+      "it"
+    ],
+    "resourcesEach": 637,
+    "explicitTemplates": 642,
+    "legacyApi": 28
+  },
+  "publishingGuardsPassed": 3,
+  "device": {
+    "api": 35,
+    "abi": "x86_64",
+    "normalPixels": [
+      1080,
+      1920
+    ],
+    "normalDpi": 420,
+    "normalPassed": 7,
+    "normalSeconds": 52.569,
+    "compactDp": [
+      320,
+      570
+    ],
+    "compactPassed": 3,
+    "compactSeconds": 47.021,
+    "spotifyAutomaticSaveAndReimport": true,
+    "languagePickerAllFiveLanguages": true,
+    "clipboardAndProviderValidation": true,
+    "offlineMusicAndPodcastPlayback": true,
+    "playerAndQueueShuffle": true
+  },
+  "upgrade": {
+    "fromVersion": "0.8.1-beta01",
+    "fromVersionCode": 13,
+    "installation": "adb install -r; no clear or uninstall",
+    "unchangedLibraryRows": {
+      "tracks": {
+        "rows": 13,
+        "unchanged": true
+      },
+      "playlists": {
+        "rows": 1,
+        "unchanged": true
+      },
+      "playlist_entries": {
+        "rows": 1,
+        "unchanged": true
+      },
+      "playback_checkpoint": {
+        "rows": 1,
+        "unchanged": true
+      },
+      "podcast_feeds": {
+        "rows": 2,
+        "unchanged": true
+      },
+      "podcast_episodes": {
+        "rows": 500,
+        "unchanged": true
+      },
+      "podcast_progress": {
+        "rows": 4,
+        "unchanged": true
+      },
+      "listening_preferences": {
+        "rows": 5,
+        "unchanged": true
+      }
+    }
+  },
+  "certificateSha256": "01ad2a63fd92aea2cbff97812fe90e3adc46c108f3c110558be80ea89cc209f2",
+  "runtimeSha256": {
+    "classes.dex": "77e99ed72c8cad912e93f313694771720484a051f2c48d392536e9ee3a080133",
+    "classes2.dex": "d790b5d2e8dca7131a973b1781433223ad87f48bc651304cb0f59a9d48910831",
+    "classes3.dex": "e7d09f904262792033a635cb444a0beac639e9c401df45f39639b1c6dd4c45d5",
+    "classes4.dex": "2c016fc2a0251febfd7bd99a587566cdbba5f68ea4ee5870f55cbca3e81f0752",
+    "classes5.dex": "aba70b2716fe848b6a16f3293a4677d8fbd48ae3f7f361d20dbb88dcde09cbb4",
+    "classes6.dex": "00a891b602e20ced6f4c700e08ed3003c224d17dbf2962096b38f3810b8c1c0a",
+    "AndroidManifest.xml": "4cce74a36eae3a76df69dcb9d5d8a55f66a72841cd6333c38ab1c228ad71901c",
+    "resources.arsc": "77d7da79d6d56862f9684091fea51a914e8d70996369db6c477315711deb4019"
+  }
+}

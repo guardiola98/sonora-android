@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import org.sonora.music.ui.ImportPresenter
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -90,6 +91,25 @@ class LibraryImportTest {
         val summary = repo.save(ready, unresolved)
         assertEquals(1, summary.unresolved)
         assertEquals(raw.url, db.library().playlistTracks(db.library().findPlaylist("test")!!.id).first().single().url)
+    }
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun publicYoutubeLinkSavesWithoutPreviewAndReimportDoesNotDuplicate() = runTest {
+        val source = object : LibraryImportSource {
+            override suspend fun playlist(url: String, progress: (Int) -> Unit) = ImportCollection("youtube:PLabcdefghijk", "Direct link", listOf(a, b), skipped = 1)
+            override suspend fun track(url: String): Track = error("Already has metadata")
+        }
+        val presenter = ImportPresenter(ImportRepository(source, db.library()), this)
+        repeat(2) { attempt ->
+            presenter.loadPlaylist("https://music.youtube.com/playlist?list=PLabcdefghijk")
+            val finished = presenter.state.first { it.summary != null || it.error != null }
+            assertNull(finished.error)
+            assertNotNull(presenter.state.value.summary)
+            assertNull(presenter.state.value.preview)
+            assertEquals(if (attempt == 0) 2 else 0, presenter.state.value.summary!!.addedEntries)
+            assertEquals(1, presenter.state.value.skipped)
+            val id = db.library().findPlaylist("youtube:PLabcdefghijk")!!.id
+            assertEquals(listOf(a.url, b.url), db.library().playlistTracks(id).first().map { it.url })
+        }
     }
     @Test fun versionOneDatabaseMigratesWithoutLosingExistingLibrary() = runTest {
         context.deleteDatabase("migration-import.db")

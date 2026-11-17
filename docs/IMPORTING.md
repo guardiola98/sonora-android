@@ -5,9 +5,8 @@ Open **Library → Import music** (the import icon in the library header). Impor
 ## Public or unlisted playlist link
 
 1. Copy the playlist's share link from YouTube Music or YouTube.
-2. Paste it under **YouTube Music**, then choose **Preview playlist**.
-3. Review the title/count and choose **Playlist**, **Favorites**, both, or neither.
-4. Tap **Import selected music**. Open **Library → Playlists** to play it.
+2. Paste it under **YouTube Music**, then choose **Import playlist**.
+3. Sonora saves the list automatically and shows a completion summary. Open **Library → Playlists** to play it.
 
 Sonora follows subsequent pages, preserves source order and skips duplicate/unavailable entries. If a page fails, nothing is saved; retry or use an export. Account-only Likes (`LM`/`LL`), Watch Later and dynamic radio/mix links are not supported through this route. Sonora does not request credentials or bypass access restrictions.
 
@@ -26,7 +25,7 @@ No sign-in occurs inside Sonora, and no Google password, cookie or API key is ne
 
 ## Preview, offline use and reimporting
 
-Nothing is written before **Import selected music**. Preview reports duplicates, invalid/unavailable entries and ignored files. Unselect both destinations to skip a list.
+For Takeout files, nothing is written before **Import selected music**. Public playlist links save directly after **Import playlist**. Preview reports duplicates, invalid/unavailable entries and ignored files. Unselect both destinations to skip a list.
 
 Files containing only video IDs can be imported offline: disable **Look up missing titles online**. Songs are saved as `YouTube track <id>` and remain playable if the source is accessible. Optional lookup has a 20-second timeout per request, at most three concurrent requests, and stops further lookups after repeated network/restriction failures. Failed lookups retain the video reference. Reimport with lookup enabled to retry. Streaming requires a connection; [completed downloads](DOWNLOADS.md) play offline.
 

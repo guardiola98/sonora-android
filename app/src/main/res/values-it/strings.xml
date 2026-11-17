@@ -624,4 +624,17 @@
     <string name="msg_4062bf5bae4d">"Importazione Spotify"</string>
     <string name="msg_6d69949cadf3">"Spotify può mostrare solo parte di una playlist lunga. Controlla il numero di brani prima di importare."</string>
     <string name="msg_d468642bd5fb">"Mostra su Spotify"</string>
+    <string name="finding_songs">"Ricerca dei brani · %1$s / %2$s"</string>
+    <string name="import_no_connection">"Impossibile trovare brani riproducibili. Controlla la connessione e importa di nuovo. Non è stato salvato nulla."</string>
+    <string name="import_no_matches">"Nessun brano riproducibile trovato. Non è stato salvato nulla. Prova un’altra playlist o un altro file."</string>
+    <string name="import_automatic_versions">"Le migliori versioni disponibili su YouTube vengono aggiunte automaticamente. Non serve controllare ogni brano."</string>
+    <string name="import_match_counts">"%1$s voci lette · %2$s trovate · %3$s saltate"</string>
+    <string name="import_duplicates_once">"%1$s voci ripetute sono state mantenute una sola volta."</string>
+    <string name="import_skip_retry">"Le voci senza risultati disponibili sono state saltate. Importa di nuovo per riprovare; i brani esistenti vengono mantenuti."</string>
+    <string name="import_search_failures">"%1$s ricerche non sono state completate. Controlla la connessione e importa di nuovo per aggiungere i brani mancanti."</string>
+    <string name="spotify_partial_export">"Spotify potrebbe mostrare solo parte di una playlist. Per importare le voci mancanti, usa un’esportazione Spotify ZIP / JSON."</string>
+    <string name="spotify_export_auto">"Scegli il file ZIP con i dati del tuo account, il JSON delle playlist o YourLibrary.json. Tutte le playlist e tutti i brani salvati inclusi vengono importati automaticamente con le migliori versioni disponibili su YouTube."</string>
+    <string name="spotify_link_auto">"Le migliori versioni disponibili su YouTube vengono aggiunte automaticamente. Spotify potrebbe mostrare solo parte di una playlist lunga."</string>
+    <string name="import_playlist_direct">"Importa playlist"</string>
+    <string name="import_skipped_count">"%1$s voci non disponibili o non valide saltate"</string>
 </resources>

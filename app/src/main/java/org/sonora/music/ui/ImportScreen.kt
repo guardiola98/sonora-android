@@ -36,7 +36,9 @@ import org.sonora.music.domain.YouTubeLinks
         }
     }
     if (spotifyState.active || spotifyState.error != null) {
-        SpotifyImportReview(vm.spotifyImporter, spotifyState)
+        SpotifyImportScreen(vm.spotifyImporter, spotifyState, onClose) {
+            vm.spotifyImporter.cancel(); vm.importer.reset()
+        }
         return
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments(), vm::importFiles)
@@ -72,6 +74,7 @@ import org.sonora.music.domain.YouTubeLinks
                 Text(tr("Your music is ready"), style = MaterialTheme.typography.headlineSmall)
                 Text(tr("%1\$s new playlists · %2\$s new favorites\n%3\$s tracks added to playlists · %4\$s new tracks", summary.newPlaylists, summary.newFavorites, summary.addedEntries, summary.newTracks))
                 if (summary.newTracks + summary.newFavorites + summary.newPlaylists + summary.addedEntries == 0) Text(tr("Everything was already saved. No duplicates were added."))
+                if (state.skipped > 0) Text(tr("%1\$s unavailable/invalid entries skipped", state.skipped), style = MaterialTheme.typography.bodySmall)
                 if (summary.unresolved > 0) Text(tr("%1\$s tracks were saved by video ID because their titles were unavailable. Reimport with online lookup to retry. Unavailable videos may not play.", summary.unresolved), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = onClose) { Text(tr("View library")) }
@@ -123,7 +126,7 @@ import org.sonora.music.domain.YouTubeLinks
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(tr("Import a Spotify export"), style = MaterialTheme.typography.titleLarge)
-                        Text(tr("Choose your account-data ZIP, Playlist JSON or YourLibrary.json. Select lists first, then review playable versions."))
+                        Text(tr("Choose your account-data ZIP, Playlist JSON or YourLibrary.json. All included playlists and saved songs are imported automatically using the best available YouTube versions."))
                         Button(onClick = { spotifyPicker.launch(arrayOf("*/*")) }) { Text(tr("Choose Spotify ZIP / JSON")) }
                         Text(tr("In Spotify account → Privacy settings, request Account data. When it is ready, download it and return here. Only playlist and saved-song files are read; profiles, payments and history are ignored."), style = MaterialTheme.typography.bodySmall)
                         TextButton(onClick = { browserError = runCatching { uriHandler.openUri("https://www.spotify.com/account/privacy/") }.isFailure }) { Text(tr("Open Spotify data export")) }
@@ -195,8 +198,8 @@ import org.sonora.music.domain.YouTubeLinks
                 if (text.isBlank()) error = tr("Copy a playlist link first.") else { link = text.trim(); error = null }
             }) { Icon(Icons.Rounded.ContentPaste, null); Spacer(Modifier.width(8.dp)); Text(tr("Paste link")) }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            if (provider == "spotify") Text(tr("Spotify may show only part of a long playlist. Check the track count before importing."), style = MaterialTheme.typography.bodySmall)
+            if (provider == "spotify") Text(tr("The best available YouTube versions are added automatically. Spotify may expose only part of a long playlist."), style = MaterialTheme.typography.bodySmall)
         }
-    }, confirmButton = { TextButton(onClick = { submit() }, enabled = link.isNotBlank()) { Text(tr("Preview playlist")) } },
+    }, confirmButton = { TextButton(onClick = { submit() }, enabled = link.isNotBlank()) { Text(tr("Import playlist")) } },
         dismissButton = { TextButton(onClick = onClose) { Text(tr("Cancel")) } })
 }

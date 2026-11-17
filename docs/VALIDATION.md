@@ -1,4 +1,4 @@
-Current release: [0.8.1 language access and simplified import validation](RELEASE-081-VALIDATION.md). Earlier reports retain their original version scope.
+Current release: [0.8.2 automatic playlist import validation](RELEASE-082-VALIDATION.md). Earlier reports retain their original version scope.
 
 Earlier import report: [0.7.1 Spotify export validation](SPOTIFY-EXPORT-VALIDATION.md). The evidence below retains its original version scope.
 

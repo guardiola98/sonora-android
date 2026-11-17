@@ -118,7 +118,7 @@ class SpotifyExportParser(private val maxBytes: Int = 32 * 1024 * 1024, private 
                 listOfNotNull(artist.takeIf { it.isNotBlank() }), 0,
                 id?.let { "https://open.spotify.com/track/$it" }.orEmpty(), unavailable = unavailable)
             // Spotify's export does not establish full recording duration; msPlayed is never duration.
-            ReviewedSong(song, reason = unavailable ?: tr("Pending review: exported metadata has no recording duration. Choose a playable version."))
+            ReviewedSong(song)
         }
     }
     private fun field(value: JSONObject, vararg names: String): String = names.firstNotNullOfOrNull {

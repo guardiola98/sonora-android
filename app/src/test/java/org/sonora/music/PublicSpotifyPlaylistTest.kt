@@ -82,8 +82,8 @@ class PublicSpotifyPlaylistTest {
         try { PublicSpotifyPlaylist(unsafeClient).read("https://spotify.link/short123"); fail() } catch (_: ImportAccessException) { }
         assertEquals(listOf("https://spotify.link/short123"), seen)
     }
-    @Test fun publicImportRequiresSelectionAndReviewAndNeverAuthorizesAnAccount() = runTest {
-        var searches = 0; var output: ImportPreview? = null
+    @Test fun publicImportAutomaticallySavesAvailableResultsWithoutSelectionOrReview() = runTest {
+        var searches = 0; var output: List<ImportSelection>? = null
         val catalog = object : MusicCatalogSource {
             override suspend fun searchPage(query: String, kind: CatalogKind, cursor: String?): CatalogPage {
                 searches++; return CatalogPage(listOf(CatalogEntry(track.url, track.title, track.artist, "", CatalogKind.SONGS, track, true)))
@@ -92,25 +92,18 @@ class PublicSpotifyPlaylistTest {
             override suspend fun related(track: Track) = emptyList<Track>()
             override suspend fun collection(url: String, cursor: String?) = error("unused")
         }
-        val lookup = object : LibraryImportSource {
-            override suspend fun track(url: String) = track
-            override suspend fun playlist(url: String, progress: (Int) -> Unit) = error("unused")
-        }
-        val presenter = SpotifyImportPresenter(backgroundScope, catalog, lookup, { output = it })
-        presenter.loadSpotifyPublicPlaylist { PublicSpotifyPlaylist.parse(html(), id) }; runCurrent()
+        val presenter = SpotifyImportPresenter(this, catalog) { output = it; ImportSummary(newPlaylists = 1) }
+        presenter.loadSpotifyPublicPlaylist { PublicSpotifyPlaylist.parse(html(), id) }; advanceUntilIdle()
         assertTrue(presenter.state.value.publicLink); assertTrue(presenter.state.value.active)
-        assertEquals(0, searches); assertNull(output)
-        presenter.select(id); presenter.readSelected(); advanceTimeBy(1500); runCurrent()
-        assertEquals(2, searches); assertEquals(2, presenter.state.value.pending)
-        presenter.confirm(); assertNull(output)
-        presenter.skipPending(true); presenter.confirm()
-        assertEquals("spotify:$id", output!!.collections.single().key)
-        assertEquals(listOf(track), output!!.collections.single().tracks)
-        assertEquals(2, output!!.collections.single().skipped)
+        assertEquals(2, searches); assertNotNull(presenter.state.value.summary)
+        assertEquals("spotify:$id", output!!.single().collection.key)
+        assertEquals(listOf(track), output!!.single().collection.tracks)
+        assertEquals(1, output!!.single().collection.skipped)
+        assertEquals(1, output!!.single().collection.duplicates)
         presenter.cancel(); assertEquals(SpotifyImportState(), presenter.state.value)
         var cancelled = false
         presenter.loadSpotifyPublicPlaylist { try { awaitCancellation() } finally { cancelled = true } }; runCurrent()
-        presenter.cancel(); runCurrent(); assertTrue(cancelled); assertTrue(presenter.state.value.lists.isEmpty())
+        presenter.cancel(); runCurrent(); assertTrue(cancelled); assertEquals(SpotifyImportState(), presenter.state.value)
     }
     @Test(timeout = 60_000) fun livePublicEmbedNeedsNoAccount() = runBlocking {
         assumeTrue("Opt in with SONORA_LIVE_IMPORT=true", System.getProperty("sonora.liveImport") == "true")
